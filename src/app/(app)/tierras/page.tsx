@@ -7,6 +7,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
+import Terrain3DEngine from "@/components/terrain/Terrain3DEngine";
 
 export default function Tierras() {
   const router = useRouter();
@@ -203,37 +204,7 @@ export default function Tierras() {
 
           {tab === '3d' && (
             <div className="space-y-4 animate-up d2">
-              <div className="rounded-2xl overflow-hidden bg-forest">
-                <div className="h-52 relative flex items-center justify-center" style={{background:'linear-gradient(135deg,#001a10,#002d1c,#1a4a32)'}}>
-                  <svg viewBox="0 0 320 180" className="w-full h-full opacity-80" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="t1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2d6b4a"/><stop offset="100%" stopColor="#001a10"/></linearGradient>
-                      <linearGradient id="t2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1a4a32"/><stop offset="100%" stopColor="#000e08"/></linearGradient>
-                    </defs>
-                    <polygon points="0,140 60,80 120,110 180,60 240,95 320,50 320,180 0,180" fill="url(#t1)" opacity=".9"/>
-                    <polygon points="0,150 50,100 100,125 160,75 220,105 280,65 320,85 320,180 0,180" fill="url(#t2)" opacity=".7"/>
-                    <polygon points="0,160 40,130 90,145 150,110 210,135 270,95 320,115 320,180 0,180" fill="#001a10" opacity=".8"/>
-                    <line x1="0" y1="100" x2="320" y2="70" stroke="#2d6b4a" strokeWidth=".5" opacity=".4"/>
-                    <line x1="0" y1="120" x2="320" y2="90" stroke="#2d6b4a" strokeWidth=".5" opacity=".3"/>
-                    <line x1="80" y1="40" x2="80" y2="180" stroke="#2d6b4a" strokeWidth=".5" opacity=".2"/>
-                    <line x1="160" y1="40" x2="160" y2="180" stroke="#2d6b4a" strokeWidth=".5" opacity=".2"/>
-                    <line x1="240" y1="40" x2="240" y2="180" stroke="#2d6b4a" strokeWidth=".5" opacity=".2"/>
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <span className="material-symbols-outlined fill-icon text-amber-light text-4xl mb-2 block">terrain</span>
-                      <p className="text-white font-bold text-sm">Motor 3D Terrain</p>
-                      <p className="text-green-300/60 text-[10px] uppercase tracking-widest font-bold">TERRAINFORGE</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <p className="text-green-300/70 text-sm leading-relaxed mb-4">Transforma tus mapas 2D en visualizaciones 3D interactivas. Planifica potreros, drenajes y topografía con precisión.</p>
-                  <Button variant="amber" className="w-full justify-center" onClick={() => showToast('Abriendo Motor 3D...','info')}>
-                    Abrir Motor 3D <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                  </Button>
-                </div>
-              </div>
+              <Terrain3DEngine />
               <Card className="p-4">
                 <h3 className="font-semibold text-forest mb-3">Modelos guardados</h3>
                 <div className="space-y-2">

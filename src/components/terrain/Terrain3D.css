@@ -1,0 +1,203 @@
+:root {
+  --bg: #07090c;
+  --panel: #0d1117;
+  --border: #1e2a35;
+  --accent: #00e5a0;
+  --accent2: #0066ff;
+  --warn: #f59e0b;
+  --text: #c8d6e0;
+  --text-dim: #4a6070;
+  --text-bright: #f0f6ff;
+  --error: #ff4444;
+}
+
+.terrain-engine-container {
+  display: flex;
+  flex: 1;
+  height: 600px;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.map-panel {
+  width: 40%;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.view3d-panel {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+#map-container {
+  flex: 1;
+  background: #0a1420;
+}
+
+#canvas3d-container {
+  flex: 1;
+  background: var(--bg);
+}
+
+.panel-header {
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-header::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.map-controls {
+  padding: 10px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-3d {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-3d-primary {
+  background: var(--accent);
+  color: #000;
+}
+
+.btn-3d-primary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-3d-secondary {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 9, 12, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.loader-ring {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.exag-control {
+  position: absolute;
+  top: 40px;
+  left: 12px;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+}
+
+.view-toggles {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.toggle-btn {
+  padding: 4px 8px;
+  font-size: 9px;
+  background: rgba(13, 17, 23, 0.8);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toggle-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.coord-info {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+.elev-info {
+    position: absolute;
+    top: 40px;
+    right: 12px;
+    background: rgba(13, 17, 23, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    z-index: 10;
+}
+
+.elev-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.elev-val span {
+    font-size: 10px;
+    color: var(--accent);
+    margin-left:2px;
+}
