@@ -49,7 +49,7 @@ export default function TierrasDetail() {
             <Button variant="outline" className="flex-1 justify-center text-sm py-2" onClick={() => router.push('/tierras?tab=analisis')}>
               <span className="material-symbols-outlined text-[15px]">psychology</span> Analizar suelo
             </Button>
-            <Button variant="outline" className="flex-1 justify-center text-sm py-2" onClick={() => router.push('/tierras?tab=3d')}>
+            <Button variant="outline" className="flex-1 justify-center text-sm py-2" onClick={() => router.push(`/tierras?tab=3d&id=${params.id}`)}>
               <span className="material-symbols-outlined text-[15px]">view_in_ar</span> Ver 3D
             </Button>
           </div>

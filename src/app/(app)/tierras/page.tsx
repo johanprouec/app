@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -9,9 +9,13 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
 import Terrain3DEngine from "@/components/terrain/Terrain3DEngine";
 
-export default function Tierras() {
+function TierrasContent() {
   const router = useRouter();
-  const [tab, setTab] = useState('lista');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'lista';
+  const propertyId = searchParams.get('id');
+  
+  const [tab, setTab] = useState(initialTab);
   const [filter, setFilter] = useState('Todos');
 
   return (
@@ -204,7 +208,7 @@ export default function Tierras() {
 
           {tab === '3d' && (
             <div className="space-y-4 animate-up d2">
-              <Terrain3DEngine />
+              <Terrain3DEngine propertyId={propertyId} />
               <Card className="p-4">
                 <h3 className="font-semibold text-forest mb-3">Modelos guardados</h3>
                 <div className="space-y-2">
@@ -226,5 +230,13 @@ export default function Tierras() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function Tierras() {
+  return (
+    <Suspense>
+      <TierrasContent />
+    </Suspense>
   );
 }

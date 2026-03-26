@@ -17,7 +17,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const Terrain3DEngine: React.FC = () => {
+interface Terrain3DEngineProps {
+  propertyId?: string | null;
+}
+
+const MOCK_POLYGONS: Record<string, [number, number][]> = {
+  '1': [
+    [-75.2443, 4.4389],
+    [-75.2403, 4.4389],
+    [-75.2403, 4.4349],
+    [-75.2443, 4.4349],
+    [-75.2443, 4.4389]
+  ],
+  '2': [
+    [-72.4000, 5.3000],
+    [-72.3900, 5.3000],
+    [-72.3900, 5.2900],
+    [-72.4000, 5.2900],
+    [-72.4000, 5.3000]
+  ]
+};
+
+const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -111,6 +132,25 @@ const Terrain3DEngine: React.FC = () => {
       mapRef.current = null;
     };
   }, []);
+
+  // Handle propertyId
+  useEffect(() => {
+    if (propertyId && MOCK_POLYGONS[propertyId] && mapRef.current) {
+      const polygon = MOCK_POLYGONS[propertyId];
+      setCurrentPolygon(polygon);
+      
+      // Update map view
+      const latlngs = polygon.map(p => [p[1], p[0]] as [number, number]);
+      const poly = L.polygon(latlngs, { color: '#00e5a0', fillOpacity: 0.15 });
+      poly.addTo(mapRef.current);
+      mapRef.current.fitBounds(poly.getBounds());
+      
+      // Small delay to ensure everything is ready before triggering generate
+      setTimeout(() => {
+        generate3DFromPolygon(polygon);
+      }, 500);
+    }
+  }, [propertyId, mapRef.current]);
 
   // Initialize Three.js
   useEffect(() => {
@@ -337,32 +377,31 @@ const Terrain3DEngine: React.FC = () => {
     }
   };
 
-  const generate3D = async () => {
-    if (!currentPolygon) return;
+  const generate3DFromPolygon = async (polygon: [number, number][]) => {
     setLoading(true);
     setStatus('PROCESANDO');
     setLoaderText('PREPARANDO TERRENO...');
     
     try {
-      const lngs = currentPolygon.map(p => p[0]);
-      const lats = currentPolygon.map(p => p[1]);
+      const lngs = polygon.map(p => p[0]);
+      const lats = polygon.map(p => p[1]);
       const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-      const maxLngVal = Math.max(...lngs), minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
 
       const GRID = 40;
       const points = [];
       const latRange = maxLat - minLat;
-      const lngRange = maxLngVal - minLng;
+      const lngRange = maxLng - minLng;
 
       for (let r = 0; r < GRID; r++) {
         for (let c = 0; c < GRID; c++) {
-          const lat = minLat + (r / (GRID - 1)) * latRange;
-          const lng = minLng + (c / (GRID - 1)) * lngRange;
+          const lat = minLat + (r / (GRID - 1)) * (latRange || 0.001);
+          const lng = minLng + (c / (GRID - 1)) * (lngRange || 0.001);
           points.push({ lat, lng });
         }
       }
 
-      const mask = points.map(p => isPointInPolygon(p.lng, p.lat, currentPolygon));
+      const mask = points.map(p => isPointInPolygon(p.lng, p.lat, polygon));
       
       // Fetch elevations
       setLoaderText('OBTENIENDO ELEVACIONES...');
@@ -386,7 +425,9 @@ const Terrain3DEngine: React.FC = () => {
       rebuildTerrain(exaggeration);
       
       const insideElevs = elevations.filter((_, i) => mask[i]);
-      setElevationRange({ min: Math.min(...insideElevs), max: Math.max(...insideElevs) });
+      if (insideElevs.length > 0) {
+        setElevationRange({ min: Math.min(...insideElevs), max: Math.max(...insideElevs) });
+      }
       
       setLoading(false);
       setShow3DControls(true);
@@ -418,13 +459,13 @@ const Terrain3DEngine: React.FC = () => {
     <div className="terrain-engine-container">
       {/* 2D MAP */}
       <div className="map-panel">
-        <div className="panel-header">Mapa 2D - Topografía</div>
+        <div className="panel-header">TerrainForge - Mapa 2D</div>
         <div id="map-container" ref={mapContainerRef}></div>
         <div className="map-controls">
           <button 
             className="btn-3d btn-3d-primary" 
             disabled={!currentPolygon || loading} 
-            onClick={generate3D}
+            onClick={() => currentPolygon && generate3DFromPolygon(currentPolygon)}
           >
             {loading ? 'Generando...' : 'Generar 3D'}
           </button>
@@ -443,7 +484,7 @@ const Terrain3DEngine: React.FC = () => {
 
       {/* 3D CANVAS */}
       <div className="view3d-panel" ref={canvasContainerRef}>
-        <div className="panel-header">Visualizador 3D - WebGL</div>
+        <div className="panel-header">TerrainForge - Visualizador 3D</div>
         <canvas id="canvas3d" ref={canvasRef}></canvas>
 
         {!show3DControls && !loading && (
