@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -33,8 +34,10 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
       </head>
       <body className={`${fraunces.variable} ${beVietnamPro.variable}`}>
-        <ToastProvider />
-        {children}
+        <AuthProvider>
+          <ToastProvider />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

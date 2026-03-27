@@ -2,9 +2,51 @@
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useDashboardMetrics } from "@/hooks/useDashboard";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export default function Home() {
   const router = useRouter();
+  const { profile, loading: authLoading } = useAuth();
+  const { metrics, loading: metricsLoading } = useDashboardMetrics();
+  const { notifications, loading: notifLoading } = useNotifications();
+
+  const displayName = profile ? `${profile.first_name} ${profile.last_name}` : "Usuario";
+  const livestockCount = metrics.livestock_count?.value ?? 0;
+  const livestockTrend = metrics.livestock_count?.trend_pct ?? 0;
+  const cultivatedArea = metrics.cultivated_area?.value ?? 0;
+  const monthlySales = metrics.monthly_sales?.value ?? 0;
+  const alertCount = notifications.filter(n => !n.is_read && n.severity === 'error').length;
+  const recentNotifs = notifications.slice(0, 3);
+
+  const formatPrice = (val: number) => {
+    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+    return `$${val}`;
+  };
+
+  const getIconForType = (type: string) => {
+    const map: Record<string, { icon: string; bg: string; color: string }> = {
+      alert_phytosanitary: { icon: "bug_report", bg: "bg-error-light", color: "text-error" },
+      price_change: { icon: "trending_up", bg: "bg-amber-pale", color: "text-amber" },
+      vaccination: { icon: "vaccines", bg: "bg-sage-light", color: "text-forest" },
+      irrigation: { icon: "water_drop", bg: "bg-sage-light", color: "text-forest" },
+      chat_message: { icon: "chat", bg: "bg-cream-dark", color: "text-stone" },
+      system: { icon: "info", bg: "bg-cream-dark", color: "text-stone" },
+    };
+    return map[type] || map.system;
+  };
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 1) return "Ahora";
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  };
+
+  const isLoading = authLoading || metricsLoading || notifLoading;
 
   return (
     <>
@@ -14,14 +56,14 @@ export default function Home() {
           {/* Greeting */}
           <div className="animate-up">
             <p className="text-stone text-sm">Buenos días,</p>
-            <h2 className="font-headline text-2xl font-bold text-forest">Carlos López 👋</h2>
+            <h2 className="font-headline text-2xl font-bold text-forest">{isLoading ? "..." : `${displayName} 👋`}</h2>
           </div>
 
           {/* Weather hero */}
           <div className="animate-up d1 rounded-2xl overflow-hidden shadow-editorial" style={{background:'linear-gradient(135deg,#002d1c 0%,#1a4a32 100%)'}}>
             <div className="p-5 flex items-start justify-between">
               <div>
-                <p className="text-green-300/70 text-xs font-semibold uppercase tracking-wider mb-1">Clima · Bogotá, CO</p>
+                <p className="text-green-300/70 text-xs font-semibold uppercase tracking-wider mb-1">Clima · {profile?.location_city || 'Colombia'}</p>
                 <p className="font-headline text-5xl font-bold text-white">24°C</p>
                 <p className="text-green-300/60 text-sm mt-1">Parcialmente nublado</p>
                 <div className="flex gap-4 mt-3">
@@ -74,23 +116,24 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-3">
               <Card className="p-4" onClick={() => router.push('/panel')}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-stone">Cabezas de ganado</p>
-                <p className="font-headline text-3xl font-bold text-forest mt-1">105</p>
-                <p className="text-xs text-green-600 font-semibold mt-1 flex items-center gap-0.5"><span className="material-symbols-outlined text-[13px]">arrow_upward</span>+4.2%</p>
+                <p className="font-headline text-3xl font-bold text-forest mt-1">{isLoading ? "..." : livestockCount}</p>
+                {livestockTrend > 0 && (
+                  <p className="text-xs text-green-600 font-semibold mt-1 flex items-center gap-0.5"><span className="material-symbols-outlined text-[13px]">arrow_upward</span>+{livestockTrend}%</p>
+                )}
               </Card>
               <Card className="p-4" onClick={() => router.push('/panel')}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-stone">Área cultivada</p>
-                <p className="font-headline text-3xl font-bold text-forest mt-1">4.2ha</p>
-                <p className="text-xs text-stone font-medium mt-1">3 cultivos activos</p>
+                <p className="font-headline text-3xl font-bold text-forest mt-1">{isLoading ? "..." : `${cultivatedArea}ha`}</p>
+                <p className="text-xs text-stone font-medium mt-1">Cultivos activos</p>
               </Card>
               <Card className="p-4" onClick={() => router.push('/panel')}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-stone">Ventas mes</p>
-                <p className="font-headline text-3xl font-bold text-forest mt-1">$45.8M</p>
-                <p className="text-xs text-amber font-semibold mt-1">Meta: $60M</p>
+                <p className="font-headline text-3xl font-bold text-forest mt-1">{isLoading ? "..." : formatPrice(monthlySales)}</p>
               </Card>
               <Card className="p-4" onClick={() => router.push('/notif')}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-stone">Alertas</p>
-                <p className="font-headline text-3xl font-bold text-error mt-1">2</p>
-                <p className="text-xs text-error font-medium mt-1">Requieren acción</p>
+                <p className={`font-headline text-3xl font-bold mt-1 ${alertCount > 0 ? 'text-error' : 'text-forest'}`}>{isLoading ? "..." : alertCount}</p>
+                {alertCount > 0 && <p className="text-xs text-error font-medium mt-1">Requieren acción</p>}
               </Card>
             </div>
           </div>
@@ -99,36 +142,27 @@ export default function Home() {
           <div className="animate-up d3">
             <p className="text-xs font-bold uppercase tracking-widest text-stone mb-3">Actividad reciente</p>
             <div className="space-y-2">
-              <Card className="p-3.5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-error-light flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined fill-icon text-error text-[18px]">bug_report</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-forest">Alerta fitosanitaria</p>
-                  <p className="text-xs text-stone">Frijol Cargamanto · Lote C</p>
-                </div>
-                <span className="text-[10px] text-stone">2h</span>
-              </Card>
-              <Card className="p-3.5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber-pale">
-                  <span className="material-symbols-outlined fill-icon text-amber text-[18px]">trending_up</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-forest">Precio Aguacate +12.4%</p>
-                  <p className="text-xs text-stone">Corabastos, Bogotá</p>
-                </div>
-                <span className="text-[10px] text-stone">4h</span>
-              </Card>
-              <Card className="p-3.5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-sage-light flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined fill-icon text-forest text-[18px]">vaccines</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-forest">Vacunación programada</p>
-                  <p className="text-xs text-stone">Lote B · Ciclo Aftosa · 48h</p>
-                </div>
-                <span className="text-[10px] text-stone">1d</span>
-              </Card>
+              {isLoading ? (
+                <Card className="p-3.5 text-center text-sm text-stone">Cargando actividad...</Card>
+              ) : recentNotifs.length > 0 ? (
+                recentNotifs.map(n => {
+                  const style = getIconForType(n.notification_type);
+                  return (
+                    <Card key={n.id} className="p-3.5 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
+                        <span className={`material-symbols-outlined fill-icon ${style.color} text-[18px]`}>{style.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-forest">{n.title}</p>
+                        <p className="text-xs text-stone">{n.body}</p>
+                      </div>
+                      <span className="text-[10px] text-stone">{timeAgo(n.created_at)}</span>
+                    </Card>
+                  );
+                })
+              ) : (
+                <Card className="p-3.5 text-center text-sm text-stone">Sin actividad reciente</Card>
+              )}
             </div>
           </div>
         </div>

@@ -1,13 +1,23 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/ToastProvider";
+import { useVeterinarians } from "@/hooks/useVets";
 
 export default function Vets() {
   const router = useRouter();
+  const [filter, setFilter] = useState("Todos");
+  const { vets, loading } = useVeterinarians(filter !== "Todos" ? filter : undefined);
+
+  const formatPrice = (val: number) => {
+    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+    return `$${val}`;
+  };
 
   return (
     <>
@@ -29,95 +39,68 @@ export default function Vets() {
           
           <div className="flex gap-2 overflow-x-auto pb-1 animate-up d1" style={{scrollbarWidth:'none'}}>
             {['Todos', 'Bovinos', 'Porcinos', 'Equinos', 'Aves', 'Nutrición'].map((f, i) => (
-              <Chip key={f} selected={i === 0}>{f}</Chip>
+              <Chip key={f} selected={filter === f} onClick={() => setFilter(f)}>{f}</Chip>
             ))}
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <Card className="overflow-hidden animate-up d1">
-              <div className="h-48 relative overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80" className="w-full h-full object-cover"/>
-                <div className="vet-badge">VETERINARIO · BOVINOS</div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-headline font-bold text-lg text-forest">Dr. Carlos Mendoza</h3>
-                    <p className="text-xs text-stone flex items-center gap-1 mt-0.5"><span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>Ibagué, CO</p>
-                    <p className="text-xs text-stone mt-1">⭐ 4.9 · 124 consultas · 8 años exp.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-headline font-bold text-lg text-amber">$120K</p>
-                    <p className="text-[10px] text-stone">/consulta</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Vacunación</Chip>
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Cirugía</Chip>
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Reproducción</Chip>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/chat/3')}><span className="material-symbols-outlined text-[15px]">chat</span> Consultar</Button>
-                  <Button variant="amber" className="flex-1 justify-center !text-sm !py-2" onClick={() => showToast('Cita agendada ✓','success')}>Agendar</Button>
-                </div>
-              </div>
-            </Card>
+            {loading ? (
+              <Card className="p-8 text-center text-stone">Cargando veterinarios...</Card>
+            ) : vets.length === 0 ? (
+              <Card className="p-8 text-center text-stone">No hay veterinarios disponibles</Card>
+            ) : (
+              vets.map((vet, idx) => {
+                const fullName = vet.user
+                  ? `${vet.professional_title === 'Veterinaria' ? 'Dra.' : 'Dr.'} ${vet.user.first_name} ${vet.user.last_name}`
+                  : vet.professional_title;
+                const specLabel = vet.animal_specialization?.length
+                  ? vet.animal_specialization.map(s => s.toUpperCase()).join(' · ')
+                  : '';
+                const badgeLabel = `${vet.professional_title.toUpperCase()}${specLabel ? ` · ${specLabel}` : ''}`;
 
-            <Card className="overflow-hidden animate-up d2">
-              <div className="h-48 relative overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80" className="w-full h-full object-cover"/>
-                <div className="vet-badge">VETERINARIA · PORCINOS</div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-headline font-bold text-lg text-forest">Dra. Laura Restrepo</h3>
-                    <p className="text-xs text-stone flex items-center gap-1 mt-0.5"><span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>Medellín, CO</p>
-                    <p className="text-xs text-stone mt-1">⭐ 4.8 · 89 consultas · 5 años exp.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-headline font-bold text-lg text-amber">$95K</p>
-                    <p className="text-[10px] text-stone">/consulta</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Nutrición</Chip>
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Diagnóstico</Chip>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/chat/4')}><span className="material-symbols-outlined text-[15px]">chat</span> Consultar</Button>
-                  <Button variant="amber" className="flex-1 justify-center !text-sm !py-2" onClick={() => showToast('Cita agendada ✓','success')}>Agendar</Button>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="overflow-hidden animate-up d3">
-              <div className="h-48 relative overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=600&q=80" className="w-full h-full object-cover"/>
-                <div className="vet-badge">VETERINARIO · EQUINOS</div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-headline font-bold text-lg text-forest">Dr. Andrés Vargas</h3>
-                    <p className="text-xs text-stone flex items-center gap-1 mt-0.5"><span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>Tunja, CO</p>
-                    <p className="text-xs text-stone mt-1">⭐ 4.7 · 56 consultas · 12 años exp.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-headline font-bold text-lg text-amber">$180K</p>
-                    <p className="text-[10px] text-stone">/consulta</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Ortopedia</Chip>
-                  <Chip selected={false} className="!text-[9px] !bg-sage-light !text-forest">Podología</Chip>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/chat/5')}><span className="material-symbols-outlined text-[15px]">chat</span> Consultar</Button>
-                  <Button variant="amber" className="flex-1 justify-center !text-sm !py-2" onClick={() => showToast('Cita agendada ✓','success')}>Agendar</Button>
-                </div>
-              </div>
-            </Card>
+                return (
+                  <Card key={vet.id} className={`overflow-hidden animate-up d${Math.min(idx + 1, 5)}`}>
+                    <div className="h-48 relative overflow-hidden">
+                      <img src={vet.profile_image_url || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80'} className="w-full h-full object-cover"/>
+                      <div className="vet-badge">{badgeLabel}</div>
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-headline font-bold text-lg text-forest">{fullName}</h3>
+                          <p className="text-xs text-stone flex items-center gap-1 mt-0.5">
+                            <span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>
+                            {vet.location_city || ''}{vet.location_department ? `, ${vet.location_department}` : ''}
+                          </p>
+                          <p className="text-xs text-stone mt-1">
+                            ⭐ {vet.rating} · {vet.total_consultations} consultas · {vet.years_experience || 0} años exp.
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-headline font-bold text-lg text-amber">
+                            {vet.consultation_price ? formatPrice(vet.consultation_price) : 'Consultar'}
+                          </p>
+                          <p className="text-[10px] text-stone">/consulta</p>
+                        </div>
+                      </div>
+                      {vet.specialties && vet.specialties.length > 0 && (
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          {vet.specialties.map(s => (
+                            <Chip key={s.specialty} selected={false} className="!text-[9px] !bg-sage-light !text-forest">{s.specialty}</Chip>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2 mt-3">
+                        <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push(`/chat/new?userId=${vet.user_id}`)}>
+                          <span className="material-symbols-outlined text-[15px]">chat</span> Consultar
+                        </Button>
+                        <Button variant="amber" className="flex-1 justify-center !text-sm !py-2" onClick={() => showToast('Cita agendada ✓','success')}>Agendar</Button>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
