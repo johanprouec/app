@@ -96,7 +96,7 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
         </div>
         <h3 className="font-headline font-bold text-2xl text-forest">No encontramos el perfil</h3>
         <p className="text-sm text-stone mt-2 mb-8">El veterinario solicitado no existe o hubo un error de conexión.</p>
-        <Button variant="forest" onClick={() => router.back()}>Regresar</Button>
+        <Button variant="outline" onClick={() => router.back()}>Regresar</Button>
       </div>
     );
   }

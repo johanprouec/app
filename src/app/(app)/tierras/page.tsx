@@ -1,5 +1,6 @@
 "use client";
 import { useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
@@ -7,7 +8,11 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
-import Terrain3DEngine from "@/components/terrain/Terrain3DEngine";
+
+const Terrain3DEngine = dynamic(
+  () => import("@/components/terrain/Terrain3DEngine"),
+  { ssr: false, loading: () => <div className="h-80 bg-white/50 animate-pulse rounded-[28px]" /> }
+);
 
 function TierrasContent() {
   const router = useRouter();
