@@ -16,13 +16,13 @@ export interface LivestockListing {
   price_unit: string;
   is_certified: boolean;
   health_certificates: string[];
+  documents: Array<{ name: string; url: string; type: string }>;
   location_city: string | null;
   location_department: string | null;
   status: string;
   cover_image_url: string | null;
   created_at: string;
   updated_at: string;
-  // Joined
   seller?: {
     id: string;
     first_name: string;
@@ -31,6 +31,15 @@ export interface LivestockListing {
     total_sales: number;
     is_verified: boolean;
   };
+}
+
+export interface LivestockFilters {
+  animalType?: string;
+  minWeight?: number;
+  maxWeight?: number;
+  minAge?: number;
+  maxAge?: number;
+  certified?: boolean;
 }
 
 export interface LandListing {
@@ -57,7 +66,6 @@ export interface LandListing {
   status: string;
   created_at: string;
   updated_at: string;
-  // Joined
   owner?: {
     id: string;
     first_name: string;
@@ -68,7 +76,7 @@ export interface LandListing {
   };
 }
 
-export function useLivestockListings(filter?: string) {
+export function useLivestockListings(filters?: LivestockFilters) {
   const [listings, setListings] = useState<LivestockListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,13 +95,18 @@ export function useLivestockListings(filter?: string) {
       .eq("status", "active")
       .order("created_at", { ascending: false });
 
-    if (filter && filter !== "Todos") {
-      if (filter === "Certificado") {
+    if (filters?.animalType && filters.animalType !== "Todos") {
+      if (filters.animalType === "Certificado") {
         query = query.eq("is_certified", true);
       } else {
-        query = query.eq("animal_type", filter.toLowerCase());
+        query = query.eq("animal_type", filters.animalType.toLowerCase());
       }
     }
+    if (filters?.minWeight) query = query.gte("avg_weight_kg", filters.minWeight);
+    if (filters?.maxWeight) query = query.lte("avg_weight_kg", filters.maxWeight);
+    if (filters?.minAge) query = query.gte("avg_age_years", filters.minAge);
+    if (filters?.maxAge) query = query.lte("avg_age_years", filters.maxAge);
+    if (filters?.certified) query = query.eq("is_certified", true);
 
     const { data, error: err } = await query;
     if (err) {
@@ -102,7 +115,7 @@ export function useLivestockListings(filter?: string) {
       setListings((data as unknown as LivestockListing[]) || []);
     }
     setLoading(false);
-  }, [supabase, filter]);
+  }, [supabase, JSON.stringify(filters)]);
 
   useEffect(() => {
     fetchListings();
@@ -202,4 +215,51 @@ export function useLandDetail(id: string) {
   }, [id, supabase]);
 
   return { listing, loading };
+}
+
+export function useCreateLivestockListing() {
+  const [loading, setLoading] = useState(false);
+  const supabase = getSupabase();
+
+  const createListing = async (data: {
+    title: string;
+    description?: string;
+    animal_type: string;
+    breed?: string;
+    units: number;
+    avg_weight_kg?: number;
+    avg_age_years?: number;
+    price: number;
+    price_unit?: string;
+    is_certified?: boolean;
+    health_certificates?: string[];
+    documents?: Array<{ name: string; url: string; type: string }>;
+    location_city?: string;
+    location_department?: string;
+    cover_image_url?: string;
+  }) => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return { error: new Error("Not authenticated") };
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("livestock_listings")
+      .insert({
+        ...data,
+        seller_id: user.id,
+        status: "active",
+        health_certificates: data.health_certificates || [],
+        documents: data.documents || [],
+      })
+      .select("id")
+      .single();
+
+    setLoading(false);
+    return { error, data: inserted };
+  };
+
+  return { createListing, loading };
 }
