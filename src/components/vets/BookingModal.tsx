@@ -41,7 +41,7 @@ export function BookingModal({ vet, onClose }: BookingModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4 bg-forest/20 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4 bg-forest/60 backdrop-blur-md animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
       <Card className="w-full max-w-md bg-white overflow-hidden animate-up z-10">
         <div className="p-5 border-b border-sage-light flex justify-between items-center bg-sage-light/30">

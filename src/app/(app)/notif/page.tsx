@@ -1,55 +1,109 @@
 "use client";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
+import { useNotifications, Notification } from "@/hooks/useNotifications";
+import { format, isToday, isYesterday } from "date-fns";
+import { es } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 
 export default function Notifications() {
+  const router = useRouter();
+  const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
+
+  const getIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'appointment': return 'calendar_today';
+      case 'chat': return 'chat';
+      default: return 'notifications';
+    }
+  };
+
+  const getColor = (type: Notification['type']) => {
+    switch (type) {
+      case 'appointment': return 'bg-amber-pale text-amber';
+      case 'chat': return 'bg-sage-light text-forest';
+      default: return 'bg-cream-dark text-stone';
+    }
+  };
+
+  const today = notifications.filter(n => isToday(new Date(n.created_at)));
+  const yesterday = notifications.filter(n => isYesterday(new Date(n.created_at)));
+  const older = notifications.filter(n => !isToday(new Date(n.created_at)) && !isYesterday(new Date(n.created_at)));
+
+  const NotificationItem = ({ n, i }: { n: Notification, i: number }) => (
+    <Card 
+      key={n.id} 
+      className={`p-4 flex gap-3 animate-up d${(i % 3) + 1} transition-all active:scale-[0.99] cursor-pointer 
+        ${!n.is_read ? 'border-l-[3px] border-amber shadow-md bg-white' : 'opacity-70 bg-white/60 border-none'}`}
+      onClick={() => {
+        markAsRead(n.id);
+        if (n.link) router.push(n.link);
+      }}
+    >
+      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${getColor(n.type)} shadow-sm`}>
+        <span className="material-symbols-outlined fill-icon text-[20px]">{getIcon(n.type)}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-bold text-forest ${!n.is_read ? '' : 'font-medium'}`}>{n.title}</p>
+        <p className="text-xs text-stone mt-0.5 leading-relaxed">{n.message}</p>
+        <p className="text-[10px] text-stone/60 font-bold uppercase tracking-widest mt-2">
+          {format(new Date(n.created_at), "HH:mm '·' d MMM", { locale: es })}
+        </p>
+      </div>
+      {!n.is_read && <div className="w-2 h-2 rounded-full bg-amber flex-shrink-0 mt-2 animate-pulse"></div>}
+    </Card>
+  );
+
   return (
     <div className="bg-cream h-full flex flex-col pt-0">
       <TopNav 
         showBack
         backTo="/home"
-        title="Notificaciones" 
-        rightAction={<button className="text-amber text-xs font-semibold bg-transparent border-none cursor-pointer">Leer todas</button>}
+        title="Centro de Alertas" 
+        rightAction={
+          <button 
+            onClick={() => markAllAsRead()}
+            className="text-amber text-xs font-bold bg-transparent border-none cursor-pointer uppercase tracking-widest px-2 py-1 rounded-lg hover:bg-amber/5 transition-colors"
+          >
+            Leer todas
+          </button>
+        }
       />
       <div className="scroll-area flex-1">
-        <div className="px-5 pt-4 pb-4 space-y-2">
-          <p className="text-xs font-bold text-stone uppercase tracking-widest mb-3">Hoy</p>
-          <Card className="p-4 flex gap-3 animate-up d1 border-l-[3px] !border-l-error">
-            <div className="w-10 h-10 rounded-full bg-error-light flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined fill-icon text-error text-[20px]">bug_report</span></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-forest">⚠️ Alerta fitosanitaria</p>
-              <p className="text-xs text-stone mt-0.5 leading-relaxed">Posible presencia de áfidos en Frijol Cargamanto (Lote C).</p>
-              <p className="text-xs text-stone mt-1.5">Hace 2 horas</p>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-error flex-shrink-0 mt-1.5"></div>
-          </Card>
-          <Card className="p-4 flex gap-3 animate-up d2 border-l-[3px] !border-l-amber">
-            <div className="w-10 h-10 rounded-full bg-amber-pale flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined fill-icon text-amber text-[20px]">trending_up</span></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-forest">📈 Aguacate Hass +12.4%</p>
-              <p className="text-xs text-stone mt-0.5">Buena oportunidad de venta en Corabastos.</p>
-              <p className="text-xs text-stone mt-1.5">Hace 4 horas</p>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-amber flex-shrink-0 mt-1.5"></div>
-          </Card>
+        <div className="px-5 pt-4 pb-20 space-y-6">
           
-          <p className="text-xs font-bold text-stone uppercase tracking-widest mt-5 mb-3">Ayer</p>
-          <Card className="p-4 flex gap-3 animate-up d3">
-            <div className="w-10 h-10 rounded-full bg-sage-light flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined fill-icon text-forest text-[20px]">water_drop</span></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-forest">💧 Riego completado</p>
-              <p className="text-xs text-stone mt-0.5">Lote A (Maíz). Próximo ciclo en 3 días.</p>
-              <p className="text-xs text-stone mt-1.5">Ayer, 6:30 AM</p>
+          {loading ? (
+             [1, 2, 3].map(i => <div key={i} className="h-24 bg-white/50 animate-pulse rounded-[28px]" />)
+          ) : notifications.length === 0 ? (
+            <div className="py-20 text-center opacity-30 px-10 flex flex-col items-center">
+              <span className="material-symbols-outlined text-[60px] mb-4">notifications_off</span>
+              <p className="text-sm font-medium">Bandeja vacía</p>
+              <p className="text-xs mt-2 leading-relaxed">Te avisaremos cuando haya novedades en tus citas o mensajes privados.</p>
             </div>
-          </Card>
-          <Card className="p-4 flex gap-3 animate-up d4">
-            <div className="w-10 h-10 rounded-full bg-cream-dark flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined fill-icon text-stone text-[20px]">chat</span></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-forest">💬 Nuevo mensaje</p>
-              <p className="text-xs text-stone mt-0.5">José Rincón te escribió sobre el lote Angus.</p>
-              <p className="text-xs text-stone mt-1.5">Ayer, 3:15 PM</p>
-            </div>
-          </Card>
+          ) : (
+            <>
+              {today.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-stone uppercase tracking-[0.2em] ml-2">Recientes</p>
+                  {today.map((n, i) => <NotificationItem key={n.id} n={n} i={i} />)}
+                </div>
+              )}
+
+              {yesterday.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-stone uppercase tracking-[0.2em] ml-2">Ayer</p>
+                  {yesterday.map((n, i) => <NotificationItem key={n.id} n={n} i={i} />)}
+                </div>
+              )}
+
+              {older.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-stone uppercase tracking-[0.2em] ml-2">Anteriores</p>
+                  {older.map((n, i) => <NotificationItem key={n.id} n={n} i={i} />)}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

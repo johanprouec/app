@@ -62,6 +62,18 @@ export default function Profile() {
               <div className="flex-1"><p className="text-sm font-semibold text-forest">Panel de control</p><p className="text-xs text-stone">Estadísticas y proyecciones</p></div>
               <span className="material-symbols-outlined text-stone text-[20px]">chevron_right</span>
             </button>
+            <div className="h-px bg-stone/10 mx-4"></div>
+            <button onClick={() => router.push('/appointments')} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-cream-dark transition-colors text-left bg-transparent border-none cursor-pointer">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-sage-light"><span className="material-symbols-outlined fill-icon text-forest text-[18px]">calendar_today</span></div>
+              <div className="flex-1"><p className="text-sm font-semibold text-forest">Mis Citas</p><p className="text-xs text-stone">Seguimiento de agendamientos</p></div>
+              <span className="material-symbols-outlined text-stone text-[20px]">chevron_right</span>
+            </button>
+            <div className="h-px bg-stone/10 mx-4"></div>
+            <button onClick={() => router.push('/vets/panel')} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-cream-dark transition-colors text-left bg-transparent border-none cursor-pointer">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-forest text-white"><span className="material-symbols-outlined text-[18px]">medical_services</span></div>
+              <div className="flex-1"><p className="text-sm font-semibold text-forest">Panel de Especialista</p><p className="text-xs text-stone">Gestionar consultas y servicios</p></div>
+              <span className="material-symbols-outlined text-stone text-[20px]">chevron_right</span>
+            </button>
           </Card>
 
           <Card className="overflow-hidden animate-up d3">

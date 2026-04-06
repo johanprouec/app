@@ -7,7 +7,7 @@ export function BottomNav() {
 
   // Hide BottomNav on these specific routes based on the original template
   const hiddenPaths = ['/chat', '/panel', '/notif'];
-  const isHidden = hiddenPaths.some(p => pathname?.startsWith(p));
+  const isHidden = hiddenPaths.some(p => pathname?.startsWith(p)) || (pathname?.startsWith('/vets/') && pathname !== '/vets');
   if (isHidden) return null;
 
   const links = [

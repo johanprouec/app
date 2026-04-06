@@ -1,5 +1,5 @@
-"use client";
 import { useRouter } from "next/navigation";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface TopNavProps {
   title?: React.ReactNode;
@@ -13,6 +13,7 @@ interface TopNavProps {
 
 export function TopNav({ title, subtitle, showBack, backTo, rightAction, isHome, centered }: TopNavProps) {
   const router = useRouter();
+  const { unreadCount } = useNotifications();
 
   const handleBack = () => {
     if (backTo) router.push(backTo);
@@ -34,11 +35,10 @@ export function TopNav({ title, subtitle, showBack, backTo, rightAction, isHome,
         <div className="flex items-center gap-2">
           <button onClick={() => router.push('/chat')} className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center relative cursor-pointer hover:bg-[#e2ddd5] transition-colors">
             <span className="material-symbols-outlined text-forest text-[20px]">chat</span>
-            <span className="absolute top-1 right-1 w-2 h-2 bg-amber rounded-full"></span>
           </button>
           <button onClick={() => router.push('/notif')} className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center relative cursor-pointer hover:bg-[#e2ddd5] transition-colors">
             <span className="material-symbols-outlined text-forest text-[20px]">notifications</span>
-            <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+            {unreadCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error rounded-full border-2 border-cream animate-pulse"></span>}
           </button>
           <button onClick={() => router.push('/profile')} className="w-9 h-9 rounded-full bg-forest flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:bg-forest-mid transition-colors">CL</button>
         </div>

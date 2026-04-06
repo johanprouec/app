@@ -321,6 +321,75 @@ export function useSimilarVets(currentVet: Vet | null) {
 }
 
 // Still available for later use once appointments table is confirmed/available
+export interface Appointment {
+  id: string;
+  user_id: string;
+  vet_id: string;
+  service_id: string;
+  appointment_date: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  notes?: string;
+  created_at: string;
+  vet?: Vet;
+}
+
+export function useUserAppointments() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+
+  useEffect(() => {
+    async function fetchAppointments() {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setAppointments([]);
+          setLoading(false);
+          return;
+        }
+
+        const { data, error: err } = await supabase
+          .from('appointments')
+          .select('*, vet:veterinarian_profiles(*)')
+          .eq('user_id', user.id)
+          .order('appointment_date', { ascending: false });
+
+        if (err) throw err;
+        setAppointments(data as Appointment[]);
+      } catch (err: any) {
+        setError({
+          message: err.message,
+          code: err.code,
+          hint: err.hint
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAppointments();
+  }, []);
+
+  const refresh = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('appointments')
+        .select('*, vet:veterinarian_profiles(*)')
+        .eq('user_id', user.id)
+        .order('appointment_date', { ascending: false });
+      if (data) setAppointments(data as Appointment[]);
+    } catch (err) {
+      console.error('Error refreshing appointments:', err);
+    }
+  };
+
+  return { appointments, loading, error, refresh };
+}
+
 export async function createAppointment(appointment: {
   vet_id: string;
   service_id?: string;
@@ -330,6 +399,142 @@ export async function createAppointment(appointment: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Debes iniciar sesión para agendar');
 
-  // Logic to be mapped when the new appointments table structure is confirmed
-  return null;
+  const { data, error } = await supabase
+    .from('appointments')
+    .insert([
+      {
+        user_id: user.id,
+        vet_id: appointment.vet_id,
+        service_id: appointment.service_id || 'consulta_general',
+        appointment_date: appointment.appointment_date,
+        notes: appointment.notes,
+        status: 'pending'
+      }
+    ])
+    .select();
+
+  if (error) {
+    console.error('Error creating appointment:', error);
+    throw error;
+  }
+
+  return data?.[0] || null;
+}
+
+export function useVetAccount() {
+  const [vet, setVet] = useState<Vet | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchVet() {
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setVet(null);
+          return;
+        }
+
+        const { data, error: err } = await supabase
+          .from('veterinarian_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (err) throw err;
+        setVet(data as Vet);
+      } catch (err) {
+        console.error('Error fetching vet account:', err);
+        setVet(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchVet();
+  }, []);
+
+  return { vet, loading };
+}
+
+export function useVetAppointments(vetId: string | undefined) {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    if (!vetId) return;
+
+    async function fetchAppointments() {
+      setLoading(true);
+      try {
+        const { data, error: err } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('vet_id', vetId)
+          .order('appointment_date', { ascending: false });
+
+        if (err) throw err;
+        setAppointments(data as Appointment[]);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAppointments();
+  }, [vetId]);
+
+  const refresh = async () => {
+    if (!vetId) return;
+    const { data } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('vet_id', vetId)
+      .order('appointment_date', { ascending: false });
+    if (data) setAppointments(data as Appointment[]);
+  };
+
+  return { appointments, loading, error, refresh };
+}
+
+export async function updateAppointmentStatus(id: string, status: Appointment['status']) {
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ status })
+    .eq('id', id)
+    .select();
+
+  if (error) throw error;
+  return data?.[0];
+}
+
+export async function createVetReview(review: {
+  vet_id: string;
+  appointment_id: string;
+  rating: number;
+  comment: string;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Debes iniciar sesión para calificar');
+
+  const { data, error } = await supabase
+    .from('vet_reviews')
+    .insert([
+      {
+        user_id: user.id,
+        vet_id: review.vet_id,
+        appointment_id: review.appointment_id,
+        rating: review.rating,
+        comment: review.comment
+      }
+    ])
+    .select();
+
+  if (error) {
+    if (error.code === '23505') throw new Error('Ya has calificado esta cita');
+    throw error;
+  }
+
+  return data?.[0];
 }
