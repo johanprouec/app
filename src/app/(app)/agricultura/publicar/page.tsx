@@ -5,21 +5,26 @@ import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/ToastProvider";
-import { useCreateLivestockListing } from "@/hooks/useListings";
+import { useCreateAgricultureListing } from "@/hooks/useListings";
 import { supabase } from "@/lib/supabase";
 
-const ANIMAL_TYPES = [
-  { value: "bovino", label: "🐄 Bovino" },
-  { value: "porcino", label: "🐷 Porcino" },
-  { value: "equino", label: "🐴 Equino" },
-  { value: "ovino", label: "🐑 Ovino" },
-  { value: "caprino", label: "🐐 Caprino" },
-  { value: "avicola", label: "🐔 Avícola" },
+const CATEGORIES = [
+  { value: "tubérculos", label: "🥔 Tubérculos" },
+  { value: "vegetales", label: "🥬 Vegetales" },
+  { value: "frutas", label: "🍎 Frutas" },
+  { value: "cereales", label: "🌾 Cereales" },
+];
+
+const SALE_UNITS = [
+  { value: "kg", label: "Kilogramos (kg)" },
+  { value: "unidad", label: "Por Unidad" },
+  { value: "bulto", label: "Por Bulto" },
+  { value: "tonelada", label: "Por Tonelada" },
 ];
 
 const CERT_TYPES = [
-  "Brucelosis", "Tuberculosis", "Aftosa", "Carbón sintomático",
-  "Rabia bovina", "IBR/DVB", "Leptospirosis",
+  "BPA (Buenas Prácticas Agrícolas)", "Certificado de Producción Orgánica", 
+  "Certificado ICA", "Global GAP", "Rainforest Alliance"
 ];
 
 interface Document {
@@ -28,22 +33,20 @@ interface Document {
   type: string;
 }
 
-export default function PublicarGanado() {
+export default function PublicarAgricultura() {
   const router = useRouter();
-  const { createListing, loading } = useCreateLivestockListing();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { createListing, loading } = useCreateAgricultureListing();
 
   const [form, setForm] = useState({
     title: "",
     description: "",
-    animal_type: "bovino",
-    breed: "",
-    units: "",
-    avg_weight_kg: "",
-    avg_age_years: "",
+    category: "vegetales",
+    variety: "",
+    units_available: "",
+    sale_unit: "kg",
     price: "",
     price_unit: "total",
-    is_certified: false,
+    is_organic: false,
     location_city: "",
     location_department: "",
     cover_image_url: "",
@@ -94,7 +97,6 @@ export default function PublicarGanado() {
       return;
     }
     
-    // Determine type from extension rough match
     let docType = "otro";
     if (file.name.toLowerCase().endsWith('.pdf')) docType = "pdf";
     else if (file.name.toLowerCase().match(/\.(doc|docx)$/)) docType = "doc";
@@ -130,7 +132,7 @@ export default function PublicarGanado() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.animal_type || !form.units || !form.price) {
+    if (!form.title || !form.category || !form.units_available || !form.price || !form.sale_unit) {
       showToast("Completa los campos obligatorios (*)", "error");
       return;
     }
@@ -138,15 +140,14 @@ export default function PublicarGanado() {
     const { error } = await createListing({
       title: form.title,
       description: form.description || undefined,
-      animal_type: form.animal_type,
-      breed: form.breed || undefined,
-      units: parseInt(form.units),
-      avg_weight_kg: form.avg_weight_kg ? parseFloat(form.avg_weight_kg) : undefined,
-      avg_age_years: form.avg_age_years ? parseFloat(form.avg_age_years) : undefined,
+      category: form.category,
+      variety: form.variety || undefined,
+      units_available: parseFloat(form.units_available),
+      sale_unit: form.sale_unit,
       price: parseFloat(form.price),
       price_unit: form.price_unit,
-      is_certified: form.is_certified || selectedCerts.length > 0,
-      health_certificates: selectedCerts,
+      is_organic: form.is_organic || selectedCerts.includes("Certificado de Producción Orgánica"),
+      certifications: selectedCerts,
       documents,
       location_city: form.location_city || undefined,
       location_department: form.location_department || undefined,
@@ -163,18 +164,17 @@ export default function PublicarGanado() {
       return;
     }
 
-    showToast("¡Publicación exitosa! 🐄", "success");
-    router.push("/ganado");
+    showToast("¡Publicación exitosa! 🌱", "success");
+    router.push("/agricultura");
   };
 
   const inputClass =
     "w-full bg-[#f5f0e8] border border-forest/20 rounded-xl px-4 py-3 text-[#002d1c] placeholder:text-[#002d1c] placeholder:opacity-60 text-sm focus:outline-none focus:border-forest transition-all";
   const labelClass = "block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5";
-  const sectionStyle = {};
 
   return (
     <>
-      <TopNav title="Publicar Ganado" showBack />
+      <TopNav title="Publicar Producto Agrícola" showBack />
       <div className="scroll-area">
         <div className="px-5 pt-4 pb-10 space-y-4">
           <p className="text-xs text-stone animate-up">
@@ -190,7 +190,7 @@ export default function PublicarGanado() {
                 Información Principal
               </h3>
               <div>
-                <label className={labelClass} style={sectionStyle}>
+                <label className={labelClass}>
                   Título del anuncio <span className="text-amber">*</span>
                 </label>
                 <input
@@ -203,7 +203,7 @@ export default function PublicarGanado() {
                 />
               </div>
               <div>
-                <label className={labelClass} style={sectionStyle}>Descripción</label>
+                <label className={labelClass}>Descripción</label>
                 <textarea
                   name="description"
                   value={form.description}
@@ -216,33 +216,33 @@ export default function PublicarGanado() {
               </div>
             </Card>
 
-            {/* Tipo y Raza */}
+            {/* Tipo y Variedad */}
             <Card className="p-5 space-y-4">
               <h3 className="font-headline font-bold text-forest flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px]">pets</span>
-                Tipo y Raza
+                <span className="material-symbols-outlined text-[20px]">grass</span>
+                Tipo y Variedad
               </h3>
               <div>
-                <label className={labelClass} style={sectionStyle}>
-                  Tipo de animal <span className="text-amber">*</span>
+                <label className={labelClass}>
+                  Tipo de producto <span className="text-amber">*</span>
                 </label>
                 <select
-                  name="animal_type"
-                  value={form.animal_type}
+                  name="category"
+                  value={form.category}
                   onChange={handleChange}
                   className={inputClass}
                   style={{ color: "#002d1c", background: "#f5f0e8", borderColor: "rgba(0,45,28,0.15)" }}
                 >
-                  {ANIMAL_TYPES.map(t => (
+                  {CATEGORIES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass} style={sectionStyle}>Raza</label>
+                <label className={labelClass}>Variedad</label>
                 <input
-                  name="breed"
-                  value={form.breed}
+                  name="variety"
+                  value={form.variety}
                   onChange={handleChange}
                  
                   className={inputClass}
@@ -251,42 +251,40 @@ export default function PublicarGanado() {
               </div>
             </Card>
 
-            {/* Detalles del lote */}
+            {/* Detalles de la venta */}
             <Card className="p-5 space-y-4">
               <h3 className="font-headline font-bold text-forest flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px]">straighten</span>
-                Detalles del Lote
+                <span className="material-symbols-outlined text-[20px]">inventory</span>
+                Detalles de Venta
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass} style={sectionStyle}>
-                    Unidades (cabezas) <span className="text-amber">*</span>
+                  <label className={labelClass}>
+                    Cantidad <span className="text-amber">*</span>
                   </label>
                   <input
-                    name="units" type="number" min="1" value={form.units}
+                    name="units_available" type="number" min="0" step="0.1" value={form.units_available}
                     onChange={handleChange}
                     className={inputClass}
                     style={{ color: "#002d1c", background: "#f5f0e8", borderColor: "rgba(0,45,28,0.15)" }}
                   />
                 </div>
                 <div>
-                  <label className={labelClass} style={sectionStyle}>Peso promedio (kg)</label>
-                  <input
-                    name="avg_weight_kg" type="number" min="0" value={form.avg_weight_kg}
+                  <label className={labelClass}>
+                    Unidad de Venta <span className="text-amber">*</span>
+                  </label>
+                  <select
+                    name="sale_unit"
+                    value={form.sale_unit}
                     onChange={handleChange}
                     className={inputClass}
                     style={{ color: "#002d1c", background: "#f5f0e8", borderColor: "rgba(0,45,28,0.15)" }}
-                  />
+                  >
+                    {SALE_UNITS.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <div>
-                <label className={labelClass} style={sectionStyle}>Edad promedio (años)</label>
-                <input
-                  name="avg_age_years" type="number" min="0" step="0.1" value={form.avg_age_years}
-                  onChange={handleChange}
-                  className={inputClass}
-                  style={{ color: "#002d1c", background: "#f5f0e8", borderColor: "rgba(0,45,28,0.15)" }}
-                />
               </div>
             </Card>
 
@@ -297,7 +295,7 @@ export default function PublicarGanado() {
                 Precio
               </h3>
               <div>
-                <label className={labelClass} style={sectionStyle}>
+                <label className={labelClass}>
                   Precio (COP) <span className="text-amber">*</span>
                 </label>
                 <input
@@ -308,7 +306,7 @@ export default function PublicarGanado() {
                 />
               </div>
               <div>
-                <label className={labelClass} style={sectionStyle}>Modalidad de precio</label>
+                <label className={labelClass}>Modalidad de precio</label>
                 <select
                   name="price_unit"
                   value={form.price_unit}
@@ -316,34 +314,34 @@ export default function PublicarGanado() {
                   className={inputClass}
                   style={{ color: "#002d1c", background: "#f5f0e8", borderColor: "rgba(0,45,28,0.15)" }}
                 >
-                  <option value="total">Precio total del lote</option>
-                  <option value="per_unit">Precio por cabeza</option>
-                  <option value="per_kg">Precio por kg</option>
+                  <option value="total">Precio total</option>
+                  <option value="per_unit_measure">Precio por unidad de medida (ej. por kg)</option>
                 </select>
               </div>
             </Card>
 
-            {/* Certificados */}
+            {/* Certificacioens y Organico */}
             <Card className="p-5 space-y-4">
               <h3 className="font-headline font-bold text-forest flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px]">verified</span>
-                Certificados Sanitarios
+                <span className="material-symbols-outlined text-[20px]">eco</span>
+                Certificaciones
               </h3>
               <div className="flex items-center justify-between bg-[#f5f0e8] rounded-xl px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-forest">✓ Animal certificado</p>
-                  <p className="text-xs text-stone">Incluye registros y certificados oficiales</p>
+                  <p className="text-sm font-semibold text-forest">🌱 Producto Orgánico</p>
+                  <p className="text-xs text-stone">Cultivado sin químicos sintéticos</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
-                    type="checkbox" name="is_certified"
-                    checked={form.is_certified} onChange={handleChange}
+                     name="is_organic" type="checkbox"
+                    checked={form.is_organic} onChange={handleChange}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-forest/40 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-forest peer-checked:after:bg-white" />
                 </label>
               </div>
-              <p className="text-xs text-stone font-semibold uppercase tracking-wider">Vacunas y pruebas realizadas</p>
+
+              <p className="text-xs text-stone font-semibold uppercase tracking-wider">Certificados seleccionados</p>
               <div className="flex flex-wrap gap-2">
                 {CERT_TYPES.map(c => (
                   <button
@@ -372,25 +370,15 @@ export default function PublicarGanado() {
                   + Añadir
                 </button>
               </div>
-              {selectedCerts.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {selectedCerts.map(c => (
-                    <span key={c} className="flex items-center gap-1 bg-green-100 text-forest text-xs px-2 py-1 rounded-lg">
-                      ✓ {c}
-                      <button type="button" onClick={() => toggleCert(c)} className="text-forest/50 hover:text-forest cursor-pointer">×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </Card>
 
             {/* Documentos */}
             <Card className="p-5 space-y-4">
               <h3 className="font-headline font-bold text-forest flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]">attach_file</span>
-                Documentos del Animal
+                Documentos
               </h3>
-              <p className="text-xs text-stone">Agrega URLs de documentos como carta de venta, registro ICA, etc.</p>
+              <p className="text-xs text-stone">Agrega URLs de documentos como certificados, etc.</p>
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <input
@@ -427,12 +415,12 @@ export default function PublicarGanado() {
                     <span className="text-xs text-stone font-semibold mx-2">O SUBE UN ARCHIVO LOCAL:</span>
                     <input
                       type="file"
-                      id="docFile"
+                      id="docFileAgro"
                       className="hidden"
                       onChange={handleFileUpload}
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                     />
-                    <label htmlFor="docFile" className="flex items-center gap-1 px-3 py-2 bg-forest-mid text-white rounded-xl text-sm font-semibold hover:bg-forest transition-colors cursor-pointer flex-shrink-0">
+                    <label htmlFor="docFileAgro" className="flex items-center gap-1 px-3 py-2 bg-forest-mid text-white rounded-xl text-sm font-semibold hover:bg-forest transition-colors cursor-pointer flex-shrink-0">
                       <span className="material-symbols-outlined text-[16px]">upload_file</span> Subir archivo
                     </label>
                   </div>
@@ -463,11 +451,11 @@ export default function PublicarGanado() {
             <Card className="p-5 space-y-4">
               <h3 className="font-headline font-bold text-forest flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]">location_on</span>
-                Ubicación de Venta
+                Ubicación de Cosecha / Venta
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass} style={sectionStyle}>Ciudad / Municipio</label>
+                  <label className={labelClass}>Ciudad / Municipio</label>
                   <input
                     name="location_city" value={form.location_city}
                     onChange={handleChange}
@@ -476,7 +464,7 @@ export default function PublicarGanado() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass} style={sectionStyle}>Departamento</label>
+                  <label className={labelClass}>Departamento</label>
                   <input
                     name="location_department" value={form.location_department}
                     onChange={handleChange}
@@ -491,10 +479,10 @@ export default function PublicarGanado() {
             <Card className="p-5 space-y-4">
               <h3 className="font-headline font-bold text-forest flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]">image</span>
-                Imagen del Lote
+                Imagen del Producto
               </h3>
               <div>
-                <label className={labelClass} style={sectionStyle}>URL de imagen principal</label>
+                <label className={labelClass}>URL de imagen principal</label>
                 <input
                   name="cover_image_url" value={form.cover_image_url}
                   onChange={handleChange}

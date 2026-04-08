@@ -79,27 +79,33 @@ export default function Home() {
           {/* Quick access */}
           <div className="animate-up d2">
             <p className="text-xs font-bold uppercase tracking-widest text-stone mb-3">Acceso rápido</p>
-            <div className="grid grid-cols-4 gap-3">
-              <button onClick={() => router.push('/ganado')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent">
-                <div className="w-14 h-14 rounded-2xl bg-forest flex items-center justify-center shadow-editorial transition-transform hover:-translate-y-1">
+            <div className="flex overflow-x-auto gap-4 pb-2" style={{ scrollbarWidth: "none" }}>
+              <button onClick={() => router.push('/ganado')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent min-w-[64px]">
+                <div className="w-14 h-14 rounded-2xl bg-forest flex items-center justify-center shadow-editorial transition-transform hover:-translate-y-1 shrink-0">
                   <span className="text-2xl">🐄</span>
                 </div>
                 <span className="text-[10px] font-semibold text-forest text-center leading-tight">Ganado</span>
               </button>
-              <button onClick={() => router.push('/tierras')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-forest-mid transition-transform hover:-translate-y-1">
+              <button onClick={() => router.push('/agricultura')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent min-w-[64px]">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-error-light transition-transform hover:-translate-y-1 shrink-0">
+                  <span className="text-2xl">🍎</span>
+                </div>
+                <span className="text-[10px] font-semibold text-forest text-center leading-tight">Agricul.</span>
+              </button>
+              <button onClick={() => router.push('/tierras')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent min-w-[64px]">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-forest-mid transition-transform hover:-translate-y-1 shrink-0">
                   <span className="text-2xl">🌾</span>
                 </div>
                 <span className="text-[10px] font-semibold text-forest text-center leading-tight">Tierras</span>
               </button>
-              <button onClick={() => router.push('/vets')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-forest-light transition-transform hover:-translate-y-1">
+              <button onClick={() => router.push('/vets')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent min-w-[64px]">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-forest-light transition-transform hover:-translate-y-1 shrink-0">
                   <span className="text-2xl">🩺</span>
                 </div>
-                <span className="text-[10px] font-semibold text-forest text-center leading-tight">Veterinarios</span>
+                <span className="text-[10px] font-semibold text-forest text-center leading-tight">Vet</span>
               </button>
-              <button onClick={() => router.push('/panel')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-amber transition-transform hover:-translate-y-1">
+              <button onClick={() => router.push('/panel')} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent min-w-[64px]">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-editorial bg-amber transition-transform hover:-translate-y-1 shrink-0">
                   <span className="text-2xl">📊</span>
                 </div>
                 <span className="text-[10px] font-semibold text-forest text-center leading-tight">Panel</span>

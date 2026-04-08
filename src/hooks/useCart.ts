@@ -1,101 +1,125 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { getSupabase } from "@/lib/supabase/client";
-import { LivestockListing } from "./useListings";
+import { supabase } from "@/lib/supabase";
 
 export interface CartItem {
   id: string;
-  listing: LivestockListing;
+  title: string;
+  price: number;
   quantity: number;
-}
-
-const CART_KEY = "agrolink_cart";
-
-function loadLocal(): CartItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveLocal(items: CartItem[]) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
-  }
-}
-
-// Singleton cart state so all components share the same instance
-let _items: CartItem[] = loadLocal();
-const _listeners: Set<() => void> = new Set();
-function notifyAll() {
-  _listeners.forEach((fn) => fn());
+  cover_image_url: string | null;
+  category?: string;
+  animal_type?: string;
 }
 
 export function useCart() {
-  const [items, setItems] = useState<CartItem[]>(_items);
-  const supabase = getSupabase();
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const sync = useCallback(() => {
-    setItems([..._items]);
+  // Load cart from localStorage or Supabase
+  const loadCart = useCallback(async () => {
+    setLoading(true);
+    const savedCart = localStorage.getItem("agrolink_cart");
+    if (savedCart) {
+      setItems(JSON.parse(savedCart));
+    }
+    
+    // Optional: Sync with Supabase if logged in
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("cart_items")
+        .select(`
+          quantity,
+          listing_id,
+          livestock_listings (id, title, price, cover_image_url, animal_type)
+        `)
+        .eq("user_id", user.id);
+      
+      if (data && data.length > 0) {
+        const dbItems = data.map((d: any) => {
+          const l = d.livestock_listings;
+          return {
+            id: l.id,
+            title: l.title,
+            price: l.price,
+            quantity: d.quantity,
+            cover_image_url: l.cover_image_url,
+            animal_type: l.animal_type
+          };
+        });
+        setItems(dbItems);
+      }
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    _listeners.add(sync);
-    return () => { _listeners.delete(sync); };
-  }, [sync]);
+    loadCart();
+  }, [loadCart]);
 
-  const addToCart = useCallback(async (listing: LivestockListing) => {
-    const existing = _items.find((i) => i.listing.id === listing.id);
-    if (existing) {
-      _items = _items.map((i) =>
-        i.listing.id === listing.id ? { ...i, quantity: i.quantity + 1 } : i
-      );
-    } else {
-      _items = [
-        ..._items,
-        { id: `${listing.id}-${Date.now()}`, listing, quantity: 1 },
-      ];
-    }
-    saveLocal(_items);
-    notifyAll();
-
-    // Sync to Supabase if authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("cart_items").upsert(
-        { user_id: user.id, listing_id: listing.id, quantity: existing ? existing.quantity + 1 : 1 },
-        { onConflict: "user_id,listing_id" }
-      );
-    }
-  }, [supabase]);
-
-  const removeFromCart = useCallback(async (listingId: string) => {
-    _items = _items.filter((i) => i.listing.id !== listingId);
-    saveLocal(_items);
-    notifyAll();
+  const addToCart = async (product: any) => {
+    setItems(prev => {
+      const existing = prev.find(i => i.id === product.id);
+      let newItems;
+      if (existing) {
+        newItems = prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      } else {
+        newItems = [...prev, { ...product, quantity: 1 }];
+      }
+      localStorage.setItem("agrolink_cart", JSON.stringify(newItems));
+      return newItems;
+    });
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("cart_items").delete()
-        .eq("user_id", user.id)
-        .eq("listing_id", listingId);
+      await supabase.from("cart_items").upsert({
+        user_id: user.id,
+        listing_id: product.id,
+        quantity: items.find(i => i.id === product.id)?.quantity || 1
+      });
     }
-  }, [supabase]);
+  };
 
-  const clearCart = useCallback(async () => {
-    _items = [];
-    saveLocal(_items);
-    notifyAll();
+  const removeFromCart = async (id: string) => {
+    setItems(prev => {
+      const newItems = prev.filter(i => i.id !== id);
+      localStorage.setItem("agrolink_cart", JSON.stringify(newItems));
+      return newItems;
+    });
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("cart_items").delete().eq("user_id", user.id).eq("listing_id", id);
+    }
+  };
+
+  const updateQuantity = async (id: string, qty: number) => {
+    if (qty < 1) return removeFromCart(id);
+    
+    setItems(prev => {
+      const newItems = prev.map(i => i.id === id ? { ...i, quantity: qty } : i);
+      localStorage.setItem("agrolink_cart", JSON.stringify(newItems));
+      return newItems;
+    });
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("cart_items").update({ quantity: qty }).eq("user_id", user.id).eq("listing_id", id);
+    }
+  };
+
+  const clearCart = async () => {
+    setItems([]);
+    localStorage.removeItem("agrolink_cart");
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("cart_items").delete().eq("user_id", user.id);
     }
-  }, [supabase]);
+  };
 
-  const total = items.reduce((acc, item) => acc + item.listing.price * item.quantity, 0);
+  const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const count = items.reduce((acc, item) => acc + item.quantity, 0);
 
-  return { items, addToCart, removeFromCart, clearCart, total, count };
+  return { items, loading, addToCart, removeFromCart, updateQuantity, clearCart, total, count };
 }
