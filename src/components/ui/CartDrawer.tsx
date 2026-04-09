@@ -1,5 +1,7 @@
 "use client";
 import { useCart } from "@/hooks/useCart";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { Button } from "./Button";
 import { Card } from "./Card";
 
@@ -8,7 +10,19 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ onClose }: CartDrawerProps) {
+  const router = useRouter();
   const { items, total, removeFromCart, updateQuantity, clearCart } = useCart();
+
+  const handleCheckout = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push("/login?next=checkout");
+      onClose();
+    } else {
+      // Proceed to real payment/checkout flow
+      alert("Procediendo al pago...");
+    }
+  };
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -110,7 +124,11 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                 </p>
               </div>
             </div>
-            <Button variant="amber" className="w-full !py-4 h-auto text-base group">
+            <Button 
+              variant="amber" 
+              className="w-full !py-4 h-auto text-base group"
+              onClick={handleCheckout}
+            >
               Proceder al pago
               <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </Button>

@@ -55,7 +55,7 @@ export default function Register() {
     <div className="bg-cream h-full flex flex-col">
       <div className="scroll-area">
         <div className="max-w-md mx-auto px-6 pt-16 pb-10">
-          <button onClick={() => router.push('/')} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer border-none bg-transparent">
+          <button onClick={() => router.back()} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer border-none bg-transparent">
             <span className="material-symbols-outlined text-[18px]">arrow_back</span> Volver
           </button>
           <div className="mb-8 animate-up">

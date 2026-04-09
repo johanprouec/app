@@ -31,7 +31,14 @@ export default function Login() {
       if (error) throw error;
 
       showToast('¡Bienvenido!', 'success');
-      router.push('/home');
+      
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      if (next === 'checkout') {
+        router.push('/home'); // Or wherever they were, actually /home is a safe bet for now if they just logged in
+      } else {
+        router.push('/home');
+      }
     } catch (error: any) {
       showToast(error.message || 'Error al iniciar sesión', 'error');
     } finally {
@@ -43,7 +50,7 @@ export default function Login() {
     <div className="bg-cream h-full flex flex-col">
       <div className="scroll-area">
         <div className="max-w-md mx-auto px-6 pt-16 pb-10">
-          <button onClick={() => router.push('/')} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer">
+          <button onClick={() => router.back()} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer border-none bg-transparent">
             <span className="material-symbols-outlined text-[18px]">arrow_back</span> Volver
           </button>
           <div className="mb-8 animate-up">
