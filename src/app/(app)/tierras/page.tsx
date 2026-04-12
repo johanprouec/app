@@ -8,6 +8,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
+import { useTierras } from "@/hooks/useTierras";
 
 const Terrain3DEngine = dynamic(
   () => import("@/components/terrain/Terrain3DEngine"),
@@ -23,11 +24,13 @@ function TierrasContent() {
   const [tab, setTab] = useState(initialTab);
   const [filter, setFilter] = useState('Todos');
 
+  const { tierras, loading } = useTierras({ type: filter !== 'Todos' ? filter : undefined });
+
   return (
     <>
       <TopNav 
         title="Tierras Productivas" 
-        subtitle={<span className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px]"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>24 propiedades verificadas</span>}
+        subtitle={<span className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px]"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>{loading ? '...' : tierras.length} propiedades verificadas</span>}
         rightAction={
           <Button variant="amber" className="!py-2 !px-4 !text-sm" onClick={() => showToast('Publicar propiedad','info')}>
             <span className="material-symbols-outlined text-[16px]">add</span> Publicar
@@ -53,62 +56,54 @@ function TierrasContent() {
 
           {tab === 'lista' && (
             <div className="space-y-4 animate-up d2">
-              <Card className="overflow-hidden">
-                <div className="h-40 overflow-hidden relative">
-                  <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80" className="w-full h-full object-cover"/>
-                  <div className="chip absolute top-3 left-3 bg-forest text-white">AGRÍCOLA</div>
+              {loading ? (
+                Array(2).fill(0).map((_, i) => (
+                  <Card key={i} className="h-64 bg-white/50 animate-pulse rounded-2xl" />
+                ))
+              ) : tierras.length === 0 ? (
+                <div className="text-center py-10">
+                  <span className="material-symbols-outlined text-stone/20 text-5xl">inventory_2</span>
+                  <p className="text-stone text-sm mt-2">No se encontraron propiedades</p>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-headline font-bold text-lg text-forest">Finca La Esperanza</h3>
-                      <p className="text-xs text-stone flex items-center gap-1 mt-0.5"><span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>Tolima, CO · 42 Ha</p>
+              ) : (
+                tierras.map(tierra => (
+                  <Card key={tierra.id} className="overflow-hidden">
+                    <div className="h-40 overflow-hidden relative">
+                      <img src={tierra.image_url} className="w-full h-full object-cover"/>
+                      <div className="chip absolute top-3 left-3 bg-forest text-white uppercase">{tierra.type}</div>
+                      {tierra.transaction_type === 'Alquiler' && (
+                        <div className="chip absolute top-3 right-3 bg-amber-light text-forest">Alquiler</div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-headline font-bold text-xl text-amber">$4.2M/ha</p>
-                      <p className="text-[10px] text-stone">Venta</p>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-headline font-bold text-lg text-forest">{tierra.name}</h3>
+                          <p className="text-xs text-stone flex items-center gap-1 mt-0.5">
+                            <span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>
+                            {tierra.location_department}, CO · {tierra.area_ha} Ha
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-headline font-bold text-xl text-amber">${tierra.price_per_ha}M/ha</p>
+                          <p className="text-[10px] text-stone">{tierra.transaction_type}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
+                        <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Suelo</p><p className="text-xs font-bold text-forest truncate">{tierra.soil_type}</p></div>
+                        <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Agua</p><p className="text-xs font-bold text-forest truncate">{tierra.water_source}</p></div>
+                        <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Altitud</p><p className="text-xs font-bold text-forest">{tierra.altitude}m</p></div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push(`/tierras/${tierra.id}`)}>Ver detalles</Button>
+                        <Button variant={tierra.type === 'Ganadero' ? 'amber' : 'primary'} className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push(`/chat/${tierra.id}`)}>
+                          {tierra.transaction_type === 'Venta' ? 'Contactar' : 'Negociar'}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
-                    <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Suelo</p><p className="text-xs font-bold text-forest">Franco</p></div>
-                    <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Agua</p><p className="text-xs font-bold text-forest">Río</p></div>
-                    <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Altitud</p><p className="text-xs font-bold text-forest">850m</p></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/tierras/1')}>Ver detalles</Button>
-                    <Button variant="primary" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/chat/1')}>Contactar</Button>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="overflow-hidden">
-                <div className="h-40 overflow-hidden relative">
-                  <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80" className="w-full h-full object-cover"/>
-                  <div className="chip absolute top-3 left-3 bg-forest text-white">GANADERO</div>
-                  <div className="chip absolute top-3 right-3 bg-amber-light text-forest">Alquiler</div>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-headline font-bold text-lg text-forest">Hacienda San Rafael</h3>
-                      <p className="text-xs text-stone flex items-center gap-1 mt-0.5"><span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>Casanare, CO · 215 Ha</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-headline font-bold text-xl text-amber">$3.8M/ha</p>
-                      <p className="text-[10px] text-stone">Alquiler/año</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
-                    <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Potreros</p><p className="text-xs font-bold text-forest">8</p></div>
-                    <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Agua</p><p className="text-xs font-bold text-forest">Jagüey</p></div>
-                    <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Pastos</p><p className="text-xs font-bold text-forest">Brizanta</p></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/tierras/2')}>Ver detalles</Button>
-                    <Button variant="amber" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push('/chat/2')}>Negociar</Button>
-                  </div>
-                </div>
-              </Card>
+                  </Card>
+                ))
+              )}
             </div>
           )}
 
@@ -121,11 +116,14 @@ function TierrasContent() {
                   <p className="absolute text-[9px] text-forest/30 top-12 left-1/3">Medellín</p>
                   <p className="absolute text-[9px] text-forest/30 top-8 right-1/3">Bogotá</p>
                   <p className="absolute text-[9px] text-forest/30 bottom-1/3 left-1/4">Cali</p>
-                  {/* Price pins */}
-                  <div className="map-pin" style={{top:'40%',left:'45%'}}>$4.2M/ha</div>
-                  <div className="map-pin" style={{top:'28%',left:'38%'}}>$3.8M/ha</div>
-                  <div className="map-pin" style={{top:'55%',left:'50%'}}>$2.9M/ha</div>
-                  <div className="map-pin" style={{top:'35%',left:'58%'}}>$5.1M/ha</div>
+                  
+                  {/* Dynamic pins if we had coordinates, for now keeping mock-ish pins but labels could be dynamic */}
+                  {tierras.slice(0, 4).map((t, idx) => (
+                    <div key={t.id} className="map-pin" style={{top:`${30 + idx*10}%`, left:`${40 + idx*5}%`}}>
+                      ${t.price_per_ha}M/ha
+                    </div>
+                  ))}
+
                   {/* Controls */}
                   <div className="absolute top-3 right-3 flex flex-col gap-1">
                     <button className="w-8 h-8 rounded-lg bg-white shadow text-forest font-bold text-lg flex items-center justify-center border-none cursor-pointer">+</button>
@@ -141,16 +139,17 @@ function TierrasContent() {
                   </div>
                 </div>
               </Card>
-              <Card className="p-3 flex items-center gap-3 cursor-pointer" onClick={() => router.push('/tierras/1')}>
-                <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=200&q=80" className="w-16 h-16 rounded-xl object-cover flex-shrink-0"/>
-                <div className="flex-1"><p className="font-semibold text-forest text-sm">Finca La Esperanza</p><p className="text-xs text-stone">Tolima · 42 Ha</p></div>
-                <p className="font-headline font-bold text-amber">$4.2M/ha</p>
-              </Card>
-              <Card className="p-3 flex items-center gap-3 cursor-pointer" onClick={() => router.push('/tierras/2')}>
-                <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=200&q=80" className="w-16 h-16 rounded-xl object-cover flex-shrink-0"/>
-                <div className="flex-1"><p className="font-semibold text-forest text-sm">Hacienda San Rafael</p><p className="text-xs text-stone">Casanare · 215 Ha</p></div>
-                <p className="font-headline font-bold text-amber">$3.8M/ha</p>
-              </Card>
+              
+              {!loading && tierras.slice(0, 2).map(t => (
+                <Card key={t.id} className="p-3 flex items-center gap-3 cursor-pointer" onClick={() => router.push(`/tierras/${t.id}`)}>
+                  <img src={t.image_url} className="w-16 h-16 rounded-xl object-cover flex-shrink-0"/>
+                  <div className="flex-1">
+                    <p className="font-semibold text-forest text-sm">{t.name}</p>
+                    <p className="text-xs text-stone">{t.location_city} · {t.area_ha} Ha</p>
+                  </div>
+                  <p className="font-headline font-bold text-amber">${t.price_per_ha}M/ha</p>
+                </Card>
+              ))}
             </div>
           )}
 
@@ -217,16 +216,25 @@ function TierrasContent() {
               <Card className="p-4">
                 <h3 className="font-semibold text-forest mb-3">Modelos guardados</h3>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2 rounded-xl bg-cream">
-                    <span className="material-symbols-outlined fill-icon text-forest text-[22px]">view_in_ar</span>
-                    <div className="flex-1"><p className="text-sm font-semibold text-forest">Finca La Esperanza</p><p className="text-xs text-stone">42 Ha · Tolima · Actualizado hoy</p></div>
-                    <button className="text-amber text-xs font-bold border-none bg-transparent cursor-pointer">Abrir</button>
-                  </div>
-                  <div className="flex items-center gap-3 p-2 rounded-xl bg-cream">
-                    <span className="material-symbols-outlined fill-icon text-forest text-[22px]">view_in_ar</span>
-                    <div className="flex-1"><p className="text-sm font-semibold text-forest">Hacienda San Rafael</p><p className="text-xs text-stone">215 Ha · Casanare · hace 3 días</p></div>
-                    <button className="text-amber text-xs font-bold border-none bg-transparent cursor-pointer">Abrir</button>
-                  </div>
+                  {!loading && tierras.length > 0 ? (
+                    tierras.map(t => (
+                      <div key={t.id} className="flex items-center gap-3 p-2 rounded-xl bg-cream">
+                        <span className="material-symbols-outlined fill-icon text-forest text-[22px]">view_in_ar</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-forest">{t.name}</p>
+                          <p className="text-xs text-stone">{t.area_ha} Ha · {t.location_department} · Actualizado</p>
+                        </div>
+                        <button 
+                          className="text-amber text-xs font-bold border-none bg-transparent cursor-pointer"
+                          onClick={() => router.push(`/tierras?tab=3d&id=${t.id}`)}
+                        >
+                          Abrir
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-stone text-center py-4">No hay modelos guardados disponibles</p>
+                  )}
                 </div>
               </Card>
             </div>
