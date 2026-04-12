@@ -153,7 +153,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
         const first = data[0];
         mapRef.current.flyTo([parseFloat(first.lat), parseFloat(first.lon)], 15);
       } else {
-        showToast('No se encontró la ubicación', 'warning');
+        showToast('No se encontró la ubicación', 'info');
       }
     } catch (err) {
       showToast('Error en la búsqueda', 'error');
@@ -499,7 +499,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
 
   const handleSaveLand = async () => {
     if (!currentPolygon || !formData.name || !formData.price_per_ha) {
-      showToast('Por favor completa los campos principales', 'warning');
+      showToast('Por favor completa los campos principales', 'info');
       return;
     }
     setSaving(true);
@@ -515,7 +515,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
         soil_type: 'Orgánico',
         water_source: 'Pozo',
         altitude: elevationRange.min,
-        image_url: formData.type === 'Ganadero' 
+        image_url: (formData.type as string) === 'Ganadero' 
           ? 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80'
           : 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80',
         polygon_data: currentPolygon

@@ -8,7 +8,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
-import { useTierras } from "@/hooks/useTierras";
+import { useTierras, useMyAssets, toggleListingStatus, purchaseProperty } from "@/hooks/useTierras";
 
 const Terrain3DEngine = dynamic(
   () => import("@/components/terrain/Terrain3DEngine"),
@@ -22,15 +22,31 @@ function TierrasContent() {
   const propertyId = searchParams.get('id');
   
   const [tab, setTab] = useState(initialTab);
+  const [viewMode, setViewMode] = useState<'market' | 'assets'>('market');
   const [filter, setFilter] = useState('Todos');
 
-  const { tierras, loading } = useTierras({ type: filter !== 'Todos' ? filter : undefined });
+  const { tierras, loading: marketLoading } = useTierras({ 
+    type: filter !== 'Todos' ? filter : undefined,
+    onlyListed: true 
+  });
+
+  const { assets, loading: assetsLoading, refresh: refreshAssets } = useMyAssets();
+
+  const loading = viewMode === 'market' ? marketLoading : assetsLoading;
+  const currentItems = viewMode === 'market' ? tierras : assets;
+
+  const totalValuation = assets.reduce((acc, curr) => acc + (curr.current_valuation || (curr.price_per_ha * curr.area_ha)), 0);
 
   return (
     <>
       <TopNav 
-        title="Tierras Productivas" 
-        subtitle={<span className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px]"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>{loading ? '...' : tierras.length} propiedades verificadas</span>}
+        title={viewMode === 'market' ? "Tierras Productivas" : "Mis Activos"} 
+        subtitle={
+          <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-[10px]">
+            <span className="w-2 h-2 rounded-full bg-[#00e5a0] inline-block animate-pulse"></span>
+            {loading ? '...' : currentItems.length} {viewMode === 'market' ? 'disponibles' : 'propiedades'}
+          </span>
+        }
         rightAction={
           <Button variant="amber" className="!py-2 !px-4 !text-sm" onClick={() => showToast('Publicar propiedad','info')}>
             <span className="material-symbols-outlined text-[16px]">add</span> Publicar
@@ -39,6 +55,7 @@ function TierrasContent() {
       />
       <div className="scroll-area">
         <div className="px-5 pt-4 pb-4 space-y-4">
+          {/* Main Navigation Tabs */}
           <div className="flex gap-2 animate-up overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
             <Chip selected={tab==='lista'} onClick={()=>setTab('lista')}>🗂 Lista</Chip>
             <Chip selected={tab==='mapa'} onClick={()=>setTab('mapa')}>🗺 Mapa</Chip>
@@ -46,7 +63,44 @@ function TierrasContent() {
             <Chip selected={tab==='3d'} onClick={()=>setTab('3d')}>🌐 Motor 3D</Chip>
           </div>
 
-          {(tab === 'lista' || tab === 'mapa') && (
+          {/* Market vs Assets Toggle */}
+          <div className="relative flex p-1.5 bg-[#1a2030] border border-white/15 rounded-[20px] w-full shadow-inner">
+            {/* Sliding indicator background */}
+            <div
+              className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-[14px] transition-all duration-300 ease-in-out bg-[#00e5a0] shadow-[0_4px_20px_rgba(0,229,160,0.3)]"
+              style={{ left: viewMode === 'market' ? '6px' : 'calc(50% + 0px)' }}
+            />
+            <button
+              onClick={() => setViewMode('market')}
+              className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] text-xs font-bold uppercase tracking-widest transition-all duration-300 border-none cursor-pointer z-10 ${viewMode === 'market' ? 'text-[#07090c]' : 'text-white/60 hover:text-white/80'}`}
+            >
+              <span className="material-symbols-outlined text-[16px]">storefront</span>
+              Mercado
+            </button>
+            <button
+              onClick={() => setViewMode('assets')}
+              className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] text-xs font-bold uppercase tracking-widest transition-all duration-300 border-none cursor-pointer z-10 ${viewMode === 'assets' ? 'text-[#07090c]' : 'text-white/60 hover:text-white/80'}`}
+            >
+              <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+              Mis Activos
+            </button>
+          </div>
+
+          {viewMode === 'assets' && !loading && (
+            <Card className="p-5 bg-gradient-to-br from-[#00e5a0]/10 to-transparent border-[#00e5a0]/20 animate-fade-in">
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Valor Total Portafolio</p>
+                <span className="text-[10px] font-bold py-1 px-2 rounded-lg bg-[#00e5a0]/20 text-[#00e5a0] tracking-tighter">+8.4% este año</span>
+              </div>
+              <p className="text-4xl font-bold tracking-tighter">${totalValuation.toFixed(1)}M</p>
+              <div className="flex gap-4 mt-4">
+                <div className="flex flex-col gap-0.5"><p className="text-[9px] text-white/30 uppercase font-black tracking-widest">Retorno Est.</p><p className="text-sm font-bold">12.4% / año</p></div>
+                <div className="flex flex-col gap-0.5"><p className="text-[9px] text-white/30 uppercase font-black tracking-widest">Liquidez</p><p className="text-sm font-bold text-amber">Baja</p></div>
+              </div>
+            </Card>
+          )}
+
+          {(tab === 'lista' || tab === 'mapa') && viewMode === 'market' && (
             <div className="flex gap-2 overflow-x-auto pb-1 animate-up d1" style={{scrollbarWidth:'none'}}>
               {['Todos', 'Agrícola', 'Ganadero', 'Mixto'].map(f => (
                 <Chip key={f} selected={filter === f} onClick={() => setFilter(f)}>{f}</Chip>
@@ -55,50 +109,105 @@ function TierrasContent() {
           )}
 
           {tab === 'lista' && (
-            <div className="space-y-4 animate-up d2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-up d2">
               {loading ? (
-                Array(2).fill(0).map((_, i) => (
-                  <Card key={i} className="h-64 bg-white/50 animate-pulse rounded-2xl" />
+                Array(3).fill(0).map((_, i) => (
+                  <Card key={i} className="h-96 bg-white/50 animate-pulse rounded-3xl"><div /></Card>
                 ))
-              ) : tierras.length === 0 ? (
-                <div className="text-center py-10">
-                  <span className="material-symbols-outlined text-stone/20 text-5xl">inventory_2</span>
-                  <p className="text-stone text-sm mt-2">No se encontraron propiedades</p>
+              ) : currentItems.length === 0 ? (
+                <div className="col-span-full text-center py-20 bg-white/5 rounded-[32px] border border-white/5">
+                  <span className="material-symbols-outlined text-stone/20 text-6xl">inventory_2</span>
+                  <p className="text-stone text-sm mt-4 font-medium">No se encontraron {viewMode === 'market' ? 'propiedades' : 'activos'}</p>
                 </div>
               ) : (
-                tierras.map(tierra => (
-                  <Card key={tierra.id} className="overflow-hidden">
-                    <div className="h-40 overflow-hidden relative">
-                      <img src={tierra.image_url} className="w-full h-full object-cover"/>
-                      <div className="chip absolute top-3 left-3 bg-forest text-white uppercase">{tierra.type}</div>
-                      {tierra.transaction_type === 'Alquiler' && (
-                        <div className="chip absolute top-3 right-3 bg-amber-light text-forest">Alquiler</div>
-                      )}
+                currentItems.map(tierra => (
+                  <Card key={tierra.id} className="group overflow-hidden flex flex-col h-full border border-white/10 shadow-xl hover:shadow-[#00e5a0]/10 transition-all duration-500 bg-[#111827] rounded-[32px]">
+                    {/* Top Image Section */}
+                    <div className="relative aspect-[16/10] overflow-hidden">
+                      <img 
+                        src={tierra.image_url} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        alt={tierra.name}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent opacity-80"></div>
+                      
+                      <div className="absolute top-4 left-4 flex gap-2">
+                        <div className="bg-[#00e5a0] text-[#07090c] text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                          {tierra.type}
+                        </div>
+                        {viewMode === 'assets' && (
+                          <div className={`text-[#07090c] text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg ${tierra.is_listed ? 'bg-[#00e5a0]' : 'bg-white/40 text-white'}`}>
+                            {tierra.is_listed ? 'EN VENTA' : 'PRIVADO'}
+                          </div>
+                        )}
+                        {viewMode === 'market' && tierra.transaction_type === 'Alquiler' && (
+                          <div className="bg-amber text-[#07090c] text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                            Alquiler
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="absolute bottom-5 left-5 right-5">
+                        <p className="text-[#00e5a0] text-[10px] font-bold uppercase tracking-[0.2em] mb-1">{tierra.location_city}</p>
+                        <h3 className="text-white font-bold text-2xl leading-tight group-hover:text-[#00e5a0] transition-colors">{tierra.name}</h3>
+                      </div>
                     </div>
-                    <div className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-headline font-bold text-lg text-forest">{tierra.name}</h3>
-                          <p className="text-xs text-stone flex items-center gap-1 mt-0.5">
-                            <span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>
-                            {tierra.location_department}, CO · {tierra.area_ha} Ha
-                          </p>
+
+                    {/* Content Section */}
+                    <div className="p-6 flex flex-col flex-1 bg-gradient-to-b from-[#111827] to-[#0f172a]">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5">
+                          <span className="material-symbols-outlined text-[18px] text-[#00e5a0]">square_foot</span>
+                          <span className="text-sm font-bold text-white">{tierra.area_ha} <span className="text-white/40 font-normal text-xs uppercase">Ha</span></span>
                         </div>
                         <div className="text-right">
-                          <p className="font-headline font-bold text-xl text-amber">${tierra.price_per_ha}M/ha</p>
-                          <p className="text-[10px] text-stone">{tierra.transaction_type}</p>
+                          <p className="text-[#00e5a0] font-headline font-bold text-3xl tracking-tighter shadow-sm">
+                            ${viewMode === 'market' ? tierra.price_per_ha : (tierra.current_valuation || (tierra.price_per_ha * tierra.area_ha)).toFixed(1)}M
+                            <span className="text-sm text-white/30 font-normal ml-0.5">{viewMode === 'market' ? '/ha' : ''}</span>
+                          </p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
-                        <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Suelo</p><p className="text-xs font-bold text-forest truncate">{tierra.soil_type}</p></div>
-                        <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Agua</p><p className="text-xs font-bold text-forest truncate">{tierra.water_source}</p></div>
-                        <div className="text-center p-2 rounded-xl bg-cream"><p className="text-[9px] text-stone font-bold">Altitud</p><p className="text-xs font-bold text-forest">{tierra.altitude}m</p></div>
+
+                      <div className="grid grid-cols-3 gap-3 mb-8">
+                        <div className="bg-white/10 p-3 rounded-2xl border border-white/20 flex flex-col items-center justify-center text-center hover:bg-white/15 transition-colors">
+                          <span className="material-symbols-outlined text-[20px] text-[#00e5a0] mb-1.5">layers</span>
+                          <p className="text-[10px] font-bold text-white leading-tight">{tierra.soil_type}</p>
+                        </div>
+                        <div className="bg-white/10 p-3 rounded-2xl border border-white/20 flex flex-col items-center justify-center text-center hover:bg-white/15 transition-colors">
+                          <span className="material-symbols-outlined text-[20px] text-[#00e5a0] mb-1.5">water_drop</span>
+                          <p className="text-[10px] font-bold text-white leading-tight">{tierra.water_source}</p>
+                        </div>
+                        <div className="bg-white/10 p-3 rounded-2xl border border-white/20 flex flex-col items-center justify-center text-center hover:bg-white/15 transition-colors">
+                          <span className="material-symbols-outlined text-[20px] text-[#00e5a0] mb-1.5">filter_hdr</span>
+                          <p className="text-[10px] font-bold text-white leading-tight">{tierra.altitude}m</p>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push(`/tierras/${tierra.id}`)}>Ver detalles</Button>
-                        <Button variant={tierra.type === 'Ganadero' ? 'amber' : 'primary'} className="flex-1 justify-center !text-sm !py-2" onClick={() => router.push(`/chat/${tierra.id}`)}>
-                          {tierra.transaction_type === 'Venta' ? 'Contactar' : 'Negociar'}
-                        </Button>
+
+                      <div className="flex gap-3 mt-auto">
+                        <button 
+                          onClick={() => router.push(`/tierras/${tierra.id}`)}
+                          className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all text-sm border border-white/10 cursor-pointer"
+                        >
+                          {viewMode === 'market' ? 'Ver Detalles' : 'Gestionar'}
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            if (viewMode === 'market') {
+                              showToast('Procesando compra...', 'info');
+                              await purchaseProperty(tierra.id);
+                              showToast('¡Finca adquirida!', 'success');
+                              router.refresh();
+                            } else {
+                              showToast(tierra.is_listed ? 'Retirando del mercado...' : 'Publicando en mercado...', 'info');
+                              await toggleListingStatus(tierra.id, tierra.is_listed);
+                              refreshAssets();
+                              showToast('Estado actualizado', 'success');
+                            }
+                          }}
+                          className={`flex-[1.2] ${viewMode === 'market' ? 'bg-[#00e5a0]' : (tierra.is_listed ? 'bg-amber' : 'bg-white/10 text-white')} text-[#07090c] font-bold py-4 rounded-2xl hover:brightness-110 active:scale-95 transition-all text-sm border-none cursor-pointer shadow-lg`}
+                        >
+                          {viewMode === 'market' ? 'Comprar' : (tierra.is_listed ? 'Retirar venta' : 'Poner en venta')}
+                        </button>
                       </div>
                     </div>
                   </Card>
