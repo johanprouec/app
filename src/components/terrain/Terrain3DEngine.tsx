@@ -4,9 +4,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import L from 'leaflet';
+import 'leaflet-draw';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './Terrain3D.css';
+import { useTierra, createProductiveLand } from '@/hooks/useTierras';
+import { showToast } from '@/components/ui/ToastProvider';
 
 type LeafletWithDraw = typeof L & {
   Control: typeof L.Control & {
@@ -42,23 +45,6 @@ interface Terrain3DEngineProps {
   propertyId?: string | null;
 }
 
-const MOCK_POLYGONS: Record<string, [number, number][]> = {
-  '1': [
-    [-75.2443, 4.4389],
-    [-75.2403, 4.4389],
-    [-75.2403, 4.4349],
-    [-75.2443, 4.4349],
-    [-75.2443, 4.4389]
-  ],
-  '2': [
-    [-72.4000, 5.3000],
-    [-72.3900, 5.3000],
-    [-72.3900, 5.2900],
-    [-72.4000, 5.2900],
-    [-72.4000, 5.3000]
-  ]
-};
-
 const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
   const leafletDraw = L as LeafletWithDraw;
   const mapRef = useRef<L.Map | null>(null);
@@ -82,6 +68,22 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
   const [exaggeration, setExaggeration] = useState(2.0);
   const [viewMode, setViewMode] = useState<'solid' | 'wireframe' | 'both'>('solid');
   const [show3DControls, setShow3DControls] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'Agrícola' as const,
+    transaction_type: 'Venta' as const,
+    area_ha: 15,
+    price_per_ha: 0
+  });
 
   // Raw data for rebuilding terrain
   const rawDataRef = useRef<{
@@ -91,6 +93,8 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     rows: number;
     mask: boolean[];
   } | null>(null);
+
+  const { tierra } = useTierra(propertyId || null);
 
   // Initialize Map
   useEffect(() => {
@@ -156,6 +160,55 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       mapRef.current = null;
     };
   }, [leafletDraw.Control, leafletDraw.Draw.Event.CREATED, leafletDraw.Draw.Event.DELETED]);
+
+  // Search Logic
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || !mapRef.current) return;
+    
+    setIsSearching(true);
+    try {
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=co&limit=5`);
+      const data = await resp.json();
+      setSearchResults(data);
+      if (data.length > 0) {
+        const first = data[0];
+        mapRef.current.flyTo([parseFloat(first.lat), parseFloat(first.lon)], 15);
+      } else {
+        showToast('No se encontró la ubicación', 'info');
+      }
+    } catch (err) {
+      showToast('Error en la búsqueda', 'error');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectResult = (lat: string, lon: string) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([parseFloat(lat), parseFloat(lon)], 16);
+      setSearchResults([]);
+    }
+  };
+
+  // Handle data from Supabase hook
+  useEffect(() => {
+    if (tierra && mapRef.current) {
+      const polygon = tierra.polygon_data;
+      setCurrentPolygon(polygon);
+      
+      // Update map view
+      const latlngs = polygon.map(p => [p[1], p[0]] as [number, number]);
+      const poly = L.polygon(latlngs, { color: '#efb810', fillOpacity: 0.25, weight: 3 });
+      poly.addTo(mapRef.current);
+      mapRef.current.fitBounds(poly.getBounds());
+      
+      // Small delay to ensure everything is ready before triggering generate
+      setTimeout(() => {
+        generate3DFromPolygon(polygon);
+      }, 500);
+    }
+  }, [tierra, mapRef.current]);
 
   // Initialize Three.js
   useEffect(() => {
@@ -413,6 +466,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       const BATCH = 500;
       const elevations = [];
       for (let i = 0; i < points.length; i += BATCH) {
+        if (i > 0) await new Promise(r => setTimeout(r, 100)); // Rate limit buffer
         const batch = points.slice(i, i + BATCH);
         const locations = batch.map(p => ({ latitude: p.lat, longitude: p.lng }));
         setProgress(Math.round((i / points.length) * 100));
@@ -423,7 +477,11 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
           body: JSON.stringify({ locations }),
         });
         const data = (await res.json()) as ElevationLookupResponse;
-        elevations.push(...data.results.map((r) => r.elevation));
+        if (data.results) {
+          elevations.push(...data.results.map((r) => r.elevation));
+        } else {
+          throw new Error("Respuesta inválida de la API");
+        }
       }
 
       rawDataRef.current = { elevations, gridPoints: points, cols: GRID, rows: GRID, mask };
@@ -441,6 +499,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       console.error(err);
       setLoading(false);
       setStatus('ERROR');
+      showToast('Error al generar motor 3D', 'error');
     }
 	  };
 
@@ -479,11 +538,81 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     }
   };
 
+  const handleSaveLand = async () => {
+    if (!currentPolygon || !formData.name || !formData.price_per_ha) {
+      showToast('Por favor completa los campos principales', 'info');
+      return;
+    }
+    setSaving(true);
+    try {
+      const newLand = {
+        name: formData.name,
+        type: formData.type,
+        location_city: 'Cundinamarca',
+        location_department: 'Bogotá',
+        area_ha: formData.area_ha,
+        price_per_ha: formData.price_per_ha,
+        transaction_type: formData.transaction_type,
+        soil_type: 'Orgánico',
+        water_source: 'Pozo',
+        altitude: elevationRange.min,
+        image_url: (formData.type as string) === 'Ganadero' 
+          ? 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80'
+          : 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80',
+        polygon_data: currentPolygon
+      };
+
+      await createProductiveLand(newLand);
+      showToast('Tierra registrada exitosamente', 'success');
+      setShowSaveForm(false);
+    } catch (err) {
+      showToast('Error al registrar tierra', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="terrain-engine-container">
       {/* 2D MAP */}
       <div className="map-panel">
-        <div className="panel-header">TerrainForge - Mapa 2D · {status}</div>
+        <div className="panel-header">TerrainForge - Mapa 2D · {status} {tierra && `(${tierra.name})`}</div>
+        
+        {/* Search Bar UI */}
+        <div className="absolute top-12 left-3 right-3 z-[1000] pointer-events-none">
+          <form onSubmit={handleSearch} className="pointer-events-auto">
+            <div className="relative group">
+              <input 
+                type="text" 
+                placeholder="Buscar finca, ciudad o vereda..."
+                className="w-full bg-[#0c1218]/90 backdrop-blur-md border border-white/10 rounded-2xl py-3 px-10 text-white text-sm shadow-2xl focus:border-[#00e5a0]/50 outline-none transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-[20px]">search</span>
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-white/20 border-t-[#00e5a0] rounded-full animate-spin"></div>
+              )}
+            </div>
+          </form>
+
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && (
+            <div className="mt-2 bg-[#0c1218]/95 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl pointer-events-auto max-h-60 overflow-y-auto">
+              {searchResults.map((res, i) => (
+                <button 
+                  key={i} 
+                  className="w-full text-left p-3 hover:bg-white/5 border-none border-b border-white/5 last:border-0 text-xs text-white/80 flex items-center gap-3 transition-colors cursor-pointer"
+                  onClick={() => handleSelectResult(res.lat, res.lon)}
+                >
+                  <span className="material-symbols-outlined text-[16px] text-[#00e5a0]">location_on</span>
+                  <span className="truncate">{res.display_name}</span>
+                </button>
+              ))}
+              <div className="p-2 bg-white/5 text-[9px] text-center text-white/30 uppercase tracking-widest font-bold">OpenStreetMap Data</div>
+            </div>
+          )}
+        </div>
         <div id="map-container" ref={mapContainerRef}></div>
         <div className="map-controls">
           <button 
@@ -493,6 +622,18 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
           >
             {loading ? 'Generando...' : 'Generar 3D'}
           </button>
+          
+          {currentPolygon && !propertyId && (
+            <button 
+              className="btn-3d btn-3d-amber" 
+              disabled={saving || loading} 
+              onClick={() => setShowSaveForm(true)}
+              style={{ background: '#efb810', color: '#07090c' }}
+            >
+              Guardar Finca
+            </button>
+          )}
+
           <button 
             className="btn-3d btn-3d-secondary" 
             disabled={!currentPolygon || loading} 
@@ -572,6 +713,97 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
           </>
         )}
       </div>
+
+      {/* SAVE FORM MODAL */}
+      {showSaveForm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-5">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowSaveForm(false)}></div>
+          <div className="bg-[#0c1218] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden relative animate-up shadow-2xl">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-white font-bold text-lg">Registrar Nueva Tierra</h3>
+              <button onClick={() => setShowSaveForm(false)} className="text-white/40 hover:text-white border-none bg-transparent cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-bold text-stone tracking-widest ml-1">Nombre de la finca</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Finca Las Camelias"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-[#00e5a0] outline-none transition-all"
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-stone tracking-widest ml-1">Tipo de uso</label>
+                  <select 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white appearance-none outline-none focus:border-[#00e5a0]"
+                    value={formData.type}
+                    onChange={e => setFormData({...formData, type: e.target.value as any})}
+                  >
+                    <option value="Agrícola" className="bg-[#0c1218]">Agrícola</option>
+                    <option value="Ganadero" className="bg-[#0c1218]">Ganadero</option>
+                    <option value="Mixto" className="bg-[#0c1218]">Mixto</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-stone tracking-widest ml-1">Transacción</label>
+                  <select 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white appearance-none outline-none focus:border-[#00e5a0]"
+                    value={formData.transaction_type}
+                    onChange={e => setFormData({...formData, transaction_type: e.target.value as any})}
+                  >
+                    <option value="Venta" className="bg-[#0c1218]">Venta</option>
+                    <option value="Alquiler" className="bg-[#0c1218]">Alquiler</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-stone tracking-widest ml-1">Área (Ha)</label>
+                  <input 
+                    type="number" 
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-[#00e5a0] outline-none transition-all"
+                    value={formData.area_ha}
+                    onChange={e => setFormData({...formData, area_ha: parseFloat(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-stone tracking-widest ml-1">Precio/Ha (M)</label>
+                  <input 
+                    type="number" 
+                    step="0.1"
+                    placeholder="4.5"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-[#00e5a0] outline-none transition-all"
+                    value={formData.price_per_ha || ''}
+                    onChange={e => setFormData({...formData, price_per_ha: parseFloat(e.target.value)})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-6 pt-0 flex gap-3">
+              <button 
+                className="flex-1 py-3 font-bold text-white/50 hover:bg-white/5 rounded-xl transition-all border-none bg-transparent cursor-pointer"
+                onClick={() => setShowSaveForm(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="flex-[2] py-3 bg-[#00e5a0] text-[#07090c] font-bold rounded-xl hover:bg-[#00c58a] transition-all border-none cursor-pointer"
+                disabled={saving}
+                onClick={handleSaveLand}
+              >
+                {saving ? 'Guardando...' : 'Confirmar Registro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
