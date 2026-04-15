@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { showToast } from '@/components/ui/ToastProvider';
-import { Vet, createAppointment } from '@/hooks/useVets';
+import { Vet, useCreateAppointment } from '@/hooks/useVets';
 
 interface BookingModalProps {
   vet: Vet;
@@ -15,7 +15,7 @@ export function BookingModal({ vet, onClose }: BookingModalProps) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('09:00');
   const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { createAppointment, loading } = useCreateAppointment();
 
   const handleBooking = async () => {
     if (!date || !time) {
@@ -23,22 +23,24 @@ export function BookingModal({ vet, onClose }: BookingModalProps) {
       return;
     }
 
-    setLoading(true);
     try {
-      await createAppointment({
+      const result = await createAppointment({
         vet_id: vet.id,
         scheduled_at: `${date}T${time}:00Z`,
         reason: selectedService === 'consulta_general' ? 'Consulta general' : selectedService,
         price: vet.consultation_price,
-        notes
+        notes: notes
       });
+
+      if (result?.error) {
+        throw result.error;
+      }
+
       showToast('¡Cita agendada con éxito!', 'success');
       onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al agendar cita';
       showToast(message, 'error');
-    } finally {
-      setLoading(false);
     }
   };
 

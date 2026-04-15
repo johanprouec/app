@@ -13,15 +13,15 @@ import 'leaflet/dist/leaflet.css';
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
   { ssr: false }
-);
+) as any;
 const TileLayer = dynamic(
   () => import("react-leaflet").then((mod) => mod.TileLayer),
   { ssr: false }
-);
+) as any;
 const Polygon = dynamic(
   () => import("react-leaflet").then((mod) => mod.Polygon),
   { ssr: false }
-);
+) as any;
 
 export default function TierrasDetail() {
   const router = useRouter();
@@ -76,6 +76,10 @@ export default function TierrasDetail() {
   const ownerInitials = tierra.owner
     ? `${tierra.owner.first_name.charAt(0)}${tierra.owner.last_name.charAt(0)}`
     : "MR";
+
+  const mapCenter = (leafletPolygon && leafletPolygon.length > 0) 
+    ? [leafletPolygon[0][0], leafletPolygon[0][1]] as [number, number]
+    : [4.5709, -74.2973] as [number, number]; // Default to Colombia center
 
   return (
     <div className="bg-[#07090c] min-h-screen text-white flex flex-col">
@@ -162,9 +166,9 @@ export default function TierrasDetail() {
                 </button>
               </div>
               <Card className="h-80 relative overflow-hidden bg-black/20 border-white/10 rounded-[32px]">
-                {leafletPolygon && (
+                {leafletPolygon && leafletPolygon.length > 0 && (
                   <MapContainer 
-                    center={[leafletPolygon[0][0], leafletPolygon[0][1]]} 
+                    center={mapCenter} 
                     zoom={15} 
                     style={{ height: '100%', width: '100%' }}
                     zoomControl={false}

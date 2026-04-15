@@ -96,200 +96,6 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
 
   const { tierra } = useTierra(propertyId || null);
 
-  // Initialize Map
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    const map = L.map(mapContainerRef.current, {
-      center: [4.5709, -74.2973], // Colombia
-      zoom: 6,
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    // Initialize Leaflet Draw
-    const drawControl = new leafletDraw.Control.Draw({
-      edit: { featureGroup: drawnItems, remove: true },
-      draw: {
-        polygon: {
-          shapeOptions: {
-            color: '#00e5a0',
-            fillColor: '#00e5a0',
-            fillOpacity: 0.15,
-            weight: 2,
-          },
-          allowIntersection: false,
-        },
-        rectangle: false,
-        circle: false,
-        marker: false,
-        polyline: false,
-        circlemarker: false,
-      },
-    });
-    map.addControl(drawControl);
-
-    map.on(leafletDraw.Draw.Event.CREATED, (e: L.LeafletEvent) => {
-      const event = e as DrawCreatedEvent;
-      drawnItems.clearLayers();
-      drawnItems.addLayer(event.layer);
-      const rings = event.layer.getLatLngs() as L.LatLng[][];
-      const latlngs: [number, number][] = rings[0].map((ll) => [ll.lng, ll.lat]);
-      // Ensure closed polygon
-      if (latlngs[0][0] !== latlngs[latlngs.length - 1][0]) {
-        latlngs.push(latlngs[0]);
-      }
-      setCurrentPolygon(latlngs);
-      setStatus('LISTO');
-    });
-
-    map.on(leafletDraw.Draw.Event.DELETED, () => {
-      setCurrentPolygon(null);
-      setStatus('ESPERANDO');
-    });
-
-    mapRef.current = map;
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [leafletDraw.Control, leafletDraw.Draw.Event.CREATED, leafletDraw.Draw.Event.DELETED]);
-
-  // Search Logic
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim() || !mapRef.current) return;
-    
-    setIsSearching(true);
-    try {
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=co&limit=5`);
-      const data = await resp.json();
-      setSearchResults(data);
-      if (data.length > 0) {
-        const first = data[0];
-        mapRef.current.flyTo([parseFloat(first.lat), parseFloat(first.lon)], 15);
-      } else {
-        showToast('No se encontró la ubicación', 'info');
-      }
-    } catch (err) {
-      showToast('Error en la búsqueda', 'error');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleSelectResult = (lat: string, lon: string) => {
-    if (mapRef.current) {
-      mapRef.current.flyTo([parseFloat(lat), parseFloat(lon)], 16);
-      setSearchResults([]);
-    }
-  };
-
-  // Handle data from Supabase hook
-  useEffect(() => {
-    if (tierra && mapRef.current) {
-      const polygon = tierra.polygon_data;
-      setCurrentPolygon(polygon);
-      
-      // Update map view
-      const latlngs = polygon.map(p => [p[1], p[0]] as [number, number]);
-      const poly = L.polygon(latlngs, { color: '#efb810', fillOpacity: 0.25, weight: 3 });
-      poly.addTo(mapRef.current);
-      mapRef.current.fitBounds(poly.getBounds());
-      
-      // Small delay to ensure everything is ready before triggering generate
-      setTimeout(() => {
-        generate3DFromPolygon(polygon);
-      }, 500);
-    }
-  }, [tierra, mapRef.current]);
-
-  // Initialize Three.js
-  useEffect(() => {
-    if (!canvasRef.current || !canvasContainerRef.current || rendererRef.current) return;
-
-    const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.4;
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x07090c);
-    
-    const width = canvasContainerRef.current.clientWidth;
-    const height = canvasContainerRef.current.clientHeight;
-    renderer.setSize(width, height, false);
-
-    const camera = new THREE.PerspectiveCamera(55, width / height, 0.5, 50000);
-    camera.position.set(400, 400, 400);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.07;
-
-    // Lighting
-    scene.add(new THREE.AmbientLight(0x8899aa, 1.8));
-    const sun = new THREE.DirectionalLight(0xfff4e0, 2.5);
-    sun.position.set(1000, 2000, 1000);
-    sun.castShadow = true;
-    scene.add(sun);
-
-    const grid = new THREE.GridHelper(5000, 50, 0x1e2a35, 0x0d1520);
-    grid.position.y = -1;
-    scene.add(grid);
-
-    rendererRef.current = renderer;
-    sceneRef.current = scene;
-    cameraRef.current = camera;
-    controlsRef.current = controls;
-
-    let animId: number;
-    const animate = () => {
-      animId = requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    const handleResize = () => {
-      if (!canvasContainerRef.current) return;
-      const w = canvasContainerRef.current.clientWidth;
-      const h = canvasContainerRef.current.clientHeight;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      rendererRef.current = null;
-    };
-  }, []);
-
-  // Point in Polygon Logic
-  const isPointInPolygon = (px: number, py: number, polygon: [number, number][]) => {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const [xi, yi] = polygon[i];
-      const [xj, yj] = polygon[j];
-      if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
-        inside = !inside;
-      }
-    }
-    return inside;
-  };
-
   // Height to Color Logic
   const getHeightColor = (t: number) => {
     const stops = [
@@ -310,6 +116,22 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       }
     }
     return new THREE.Color(1, 1, 1);
+  };
+
+  const updateViewMode = (mode: string, solid?: THREE.Mesh, wire?: THREE.Mesh) => {
+    const s = solid || terrainMeshRef.current;
+    const w = wire || wireframeMeshRef.current;
+    if (!s || !w) return;
+    
+    if (mode === 'solid') {
+      s.visible = true; w.visible = false;
+    } else if (mode === 'wireframe') {
+      s.visible = false; w.visible = true; 
+      (w.material as THREE.MeshBasicMaterial).opacity = 0.6;
+    } else {
+      s.visible = true; w.visible = true; 
+      (w.material as THREE.MeshBasicMaterial).opacity = 0.1;
+    }
   };
 
   // Rebuild Mesh
@@ -419,20 +241,17 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     }
   };
 
-  const updateViewMode = (mode: string, solid?: THREE.Mesh, wire?: THREE.Mesh) => {
-    const s = solid || terrainMeshRef.current;
-    const w = wire || wireframeMeshRef.current;
-    if (!s || !w) return;
-    
-    if (mode === 'solid') {
-      s.visible = true; w.visible = false;
-    } else if (mode === 'wireframe') {
-      s.visible = false; w.visible = true; 
-      (w.material as THREE.MeshBasicMaterial).opacity = 0.6;
-    } else {
-      s.visible = true; w.visible = true; 
-      (w.material as THREE.MeshBasicMaterial).opacity = 0.1;
+  // Point in Polygon Logic
+  const isPointInPolygon = (px: number, py: number, polygon: [number, number][]) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
     }
+    return inside;
   };
 
   const generate3DFromPolygon = async (polygon: [number, number][]) => {
@@ -501,31 +320,196 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       setStatus('ERROR');
       showToast('Error al generar motor 3D', 'error');
     }
-	  };
+  };
 
-  // Handle propertyId
+  // Initialize Map
   useEffect(() => {
-    if (propertyId && MOCK_POLYGONS[propertyId] && mapRef.current) {
-      const polygon = MOCK_POLYGONS[propertyId];
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [4.5709, -74.2973], // Colombia
+      zoom: 6,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // Initialize Leaflet Draw
+    const drawControl = new (L as any).Control.Draw({
+      edit: { featureGroup: drawnItems, remove: true },
+      draw: {
+        polygon: {
+          shapeOptions: {
+            color: '#00e5a0',
+            fillColor: '#00e5a0',
+            fillOpacity: 0.15,
+            weight: 2,
+          },
+          allowIntersection: false,
+        },
+        rectangle: false,
+        circle: false,
+        marker: false,
+        polyline: false,
+        circlemarker: false,
+      },
+    });
+    map.addControl(drawControl);
+
+    map.on((L as any).Draw.Event.CREATED, (e: any) => {
+      drawnItems.clearLayers();
+      const layer = e.layer;
+      drawnItems.addLayer(layer);
+      
+      const rings = layer.getLatLngs() as L.LatLng[][];
+      const latlngs: [number, number][] = rings[0].map((ll) => [ll.lng, ll.lat]);
+      // Ensure closed polygon
+      if (latlngs[0][0] !== latlngs[latlngs.length - 1][0]) {
+        latlngs.push(latlngs[0]);
+      }
+      setCurrentPolygon(latlngs);
+      setStatus('LISTO');
+    });
+
+    map.on((L as any).Draw.Event.DELETED, () => {
+      setCurrentPolygon(null);
+      setStatus('ESPERANDO');
+    });
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Handle data from Supabase hook
+  useEffect(() => {
+    if (tierra && mapRef.current) {
+      const polygon = tierra.polygon_data;
+      if (!polygon || polygon.length === 0) return;
+      
+      setCurrentPolygon(polygon);
       
       // Update map view
       const latlngs = polygon.map(p => [p[1], p[0]] as [number, number]);
-      const poly = L.polygon(latlngs, { color: '#00e5a0', fillOpacity: 0.15 });
+      const poly = L.polygon(latlngs, { color: '#efb810', fillOpacity: 0.25, weight: 3 });
       poly.addTo(mapRef.current);
       mapRef.current.fitBounds(poly.getBounds());
       
       // Small delay to ensure everything is ready before triggering generate
       setTimeout(() => {
-        setCurrentPolygon(polygon);
         generate3DFromPolygon(polygon);
       }, 500);
     }
-  }, [propertyId]);
+  }, [tierra, mapRef.current]);
+
+  // Initialize Three.js
+  useEffect(() => {
+    if (!canvasRef.current || !canvasContainerRef.current || rendererRef.current) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.4;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x07090c);
+    
+    const width = canvasContainerRef.current.clientWidth;
+    const height = canvasContainerRef.current.clientHeight;
+    renderer.setSize(width, height, false);
+
+    const camera = new THREE.PerspectiveCamera(55, width / height, 0.5, 50000);
+    camera.position.set(400, 400, 400);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0x8899aa, 1.8));
+    const sun = new THREE.DirectionalLight(0xfff4e0, 2.5);
+    sun.position.set(1000, 2000, 1000);
+    sun.castShadow = true;
+    scene.add(sun);
+
+    const grid = new THREE.GridHelper(5000, 50, 0x1e2a35, 0x0d1520);
+    grid.position.y = -1;
+    scene.add(grid);
+
+    rendererRef.current = renderer;
+    sceneRef.current = scene;
+    cameraRef.current = camera;
+    controlsRef.current = controls;
+
+    let animId: number;
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    const handleResize = () => {
+      if (!canvasContainerRef.current) return;
+      const w = canvasContainerRef.current.clientWidth;
+      const h = canvasContainerRef.current.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', handleResize);
+      renderer.dispose();
+      rendererRef.current = null;
+    };
+  }, []);
+
+  // Search Logic
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || !mapRef.current) return;
+    
+    setIsSearching(true);
+    try {
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=co&limit=5`);
+      const data = await resp.json();
+      setSearchResults(data);
+      if (data.length > 0) {
+        const first = data[0];
+        mapRef.current.flyTo([parseFloat(first.lat), parseFloat(first.lon)], 15);
+      } else {
+        showToast('No se encontró la ubicación', 'info');
+      }
+    } catch (err) {
+      showToast('Error en la búsqueda', 'error');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectResult = (lat: string, lon: string) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([parseFloat(lat), parseFloat(lon)], 16);
+      setSearchResults([]);
+    }
+  };
 
   const handleClear = () => {
     if (mapRef.current) {
         mapRef.current.eachLayer((l: L.Layer) => {
-            if (l instanceof L.Polygon && !(l instanceof L.Rectangle)) {
+            if (l instanceof L.Polygon) {
                 l.remove();
             }
         });
@@ -534,7 +518,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     setShow3DControls(false);
     if (terrainMeshRef.current && sceneRef.current) {
         sceneRef.current.remove(terrainMeshRef.current);
-        sceneRef.current.remove(wireframeMeshRef.current!);
+        if (wireframeMeshRef.current) sceneRef.current.remove(wireframeMeshRef.current);
     }
   };
 
@@ -571,6 +555,8 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       setSaving(false);
     }
   };
+
+  if (!leafletDraw) return null;
 
   return (
     <div className="terrain-engine-container">

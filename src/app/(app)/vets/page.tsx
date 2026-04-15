@@ -1,25 +1,18 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-<<<<<<< HEAD
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { useVets, useAllTechnicalSpecialties, useAllCities, Vet } from "@/hooks/useVets";
 import { BookingModal } from "@/components/vets/BookingModal";
-=======
-import { useVeterinarians } from "@/hooks/useVets";
-import { VetCard } from "@/components/vets/VetCard";
-import { Chip } from "@/components/ui/Chip";
 import { showToast } from "@/components/ui/ToastProvider";
->>>>>>> origin/feature/veterinary-services
 
 const CATEGORIES = ["Todos", "Bovinos", "Equinos", "Porcinos", "Caprinos", "Pequeños Animales"];
 
 export default function VetsPage() {
   const router = useRouter();
-<<<<<<< HEAD
   const [search, setSearch] = useState("");
   const [activeAnimal, setActiveAnimal] = useState("Todos");
   const [activeTech, setActiveTech] = useState("Todos");
@@ -37,10 +30,12 @@ export default function VetsPage() {
   const { specs: techSpecs } = useAllTechnicalSpecialties();
   const { cities } = useAllCities();
 
-  const animalSpecs = ['Todos', 'Bovinos', 'Porcinos', 'Equinos', 'Aves', 'Mascotas', 'Nutrición'];
+  const handleBook = (vet: Vet) => {
+    setSelectedVet(vet);
+  };
 
   return (
-    <>
+    <div className="bg-cream h-full flex flex-col pt-0">
       <TopNav 
         title="Especialistas Agro" 
         subtitle="Encuentra al profesional ideal"
@@ -54,7 +49,7 @@ export default function VetsPage() {
         } 
       />
       <div className="scroll-area">
-        <div className="px-5 pt-4 pb-4 space-y-4">
+        <div className="px-5 pt-4 pb-20 space-y-4">
           <div className="field flex items-center gap-3 px-4 h-11 animate-up">
             <span className="material-symbols-outlined text-stone text-[20px]">search</span>
             <input 
@@ -67,7 +62,7 @@ export default function VetsPage() {
           </div>
           
           <div className="flex gap-2 overflow-x-auto pb-1 animate-up d1 no-scrollbar">
-            {animalSpecs.map((f) => (
+            {CATEGORIES.map((f) => (
               <Chip 
                 key={f} 
                 selected={activeAnimal === f}
@@ -127,15 +122,10 @@ export default function VetsPage() {
                 </Card>
               ))
             ) : error ? (
-              <div className="p-8 text-center bg-error-light/10 rounded-2xl border border-error/10 animate-fade-in divide-y divide-error/5">
-                <div className="pb-4">
-                  <span className="material-symbols-outlined text-error text-[40px] mb-2">database_off</span>
-                  <p className="text-sm text-error font-bold uppercase tracking-tight">Error de Conexión Supabase</p>
-                  <p className="text-[11px] text-stone mt-1">{error.message}</p>
-                </div>
-                <div className="pt-4 space-y-1">
-                  <p className="text-[10px] text-stone font-mono">Código: <span className="text-error">{error.code || 'N/A'}</span></p>
-                </div>
+              <div className="p-8 text-center bg-error-light/10 rounded-2xl border border-error/10 animate-fade-in">
+                <span className="material-symbols-outlined text-error text-[40px] mb-2">database_off</span>
+                <p className="text-sm text-error font-bold uppercase tracking-tight">Error de Conexión</p>
+                <p className="text-[11px] text-stone mt-1">{error.message}</p>
               </div>
             ) : vets.length === 0 ? (
               <div className="p-12 text-center bg-sage-light/5 rounded-2xl border border-dashed border-sage-light animate-fade-in">
@@ -145,7 +135,7 @@ export default function VetsPage() {
             ) : (
               vets.map((vet, i) => {
                 const fullName = vet.user
-                  ? `${vet.professional_title === 'Veterinaria' ? 'Dra.' : 'Dr.'} ${vet.user.first_name} ${vet.user.last_name}`
+                  ? `${vet.professional_title.includes('Veterinari') ? (vet.professional_title.endsWith('a') ? 'Dra.' : 'Dr.') : ''} ${vet.user.first_name} ${vet.user.last_name}`
                   : vet.professional_title;
                 
                 return (
@@ -158,7 +148,7 @@ export default function VetsPage() {
                       <img 
                         src={vet.profile_image_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80"} 
                         className="w-full h-full object-cover"
-                        alt={vet.professional_title}
+                        alt={fullName}
                       />
                       <div className="vet-badge uppercase">
                         {vet.animal_specialization?.[0] || 'VETERINARIO'} · {vet.location_city}
@@ -197,14 +187,17 @@ export default function VetsPage() {
                         <Button 
                           variant="outline" 
                           className="flex-1 justify-center !text-sm !py-2" 
-                          onClick={() => router.push(`/chat/vet_${vet.id}`)}
+                          onClick={() => {
+                            showToast("Abriendo chat...", "info");
+                            router.push(`/chat/vet_${vet.id}`);
+                          }}
                         >
                           <span className="material-symbols-outlined text-[15px]">chat</span> Chat
                         </Button>
                         <Button 
                           variant="amber" 
                           className="flex-1 justify-center !text-sm !py-2 font-bold" 
-                          onClick={() => setSelectedVet(vet)}
+                          onClick={() => handleBook(vet)}
                         >
                           Agendar
                         </Button>
@@ -214,83 +207,16 @@ export default function VetsPage() {
                 );
               })
             )}
-=======
-  const [selectedCategory, setSelectedCategory] = useState("Todos");
-  const { vets, loading, error } = useVeterinarians(selectedCategory);
-
-  const handleBook = (vetId: string) => {
-    showToast("Agendando cita...", "info");
-    // Redirect to appointment creation or open modal
-    router.push(`/vets/${vetId}/book`);
-  };
-
-  return (
-    <div className="bg-cream h-full flex flex-col pt-0">
-      <div className="px-5 pt-8 pb-4 bg-white/50 backdrop-blur-md sticky top-0 z-10 border-b border-forest/5">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-headline font-bold text-3xl text-forest">Salud Animal</h1>
-            <p className="text-stone text-sm">Encuentra los mejores especialistas para tu hato</p>
           </div>
-          <div className="w-12 h-12 rounded-full glass flex items-center justify-center text-forest">
-            <span className="material-symbols-outlined text-[24px]">local_hospital</span>
->>>>>>> origin/feature/veterinary-services
-          </div>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {CATEGORIES.map((cat) => (
-            <Chip
-              key={cat}
-              selected={selectedCategory === cat}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </Chip>
-          ))}
         </div>
       </div>
 
-<<<<<<< HEAD
       {selectedVet && (
         <BookingModal 
           vet={selectedVet} 
           onClose={() => setSelectedVet(null)} 
         />
       )}
-    </>
-=======
-      <div className="flex-1 scroll-area p-5">
-        {loading ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <span className="material-symbols-outlined animate-spin text-forest">progress_activity</span>
-              <p className="text-stone text-xs font-medium">Buscando especialistas...</p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="h-full flex items-center justify-center text-center p-8 bg-white rounded-3xl border border-error/10">
-            <p className="text-error font-medium">{error}</p>
-          </div>
-        ) : vets.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-60">
-            <span className="material-symbols-outlined text-4xl mb-2">search_off</span>
-            <p className="text-stone font-medium">No se encontraron veterinarios en esta categoría</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {vets.map((vet) => (
-              <VetCard 
-                key={vet.id} 
-                vet={vet} 
-                onClick={() => router.push(`/vets/${vet.id}`)}
-                onBook={handleBook}
-              />
-            ))}
-          </div>
-        )}
-      </div>
     </div>
->>>>>>> origin/feature/veterinary-services
   );
 }

@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 
@@ -35,14 +36,14 @@ export function TopNav({ title, subtitle, showBack, backTo, rightAction, isHome,
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => router.push('/chat')} className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center relative cursor-pointer hover:bg-[#e2ddd5] transition-colors">
+          <Link href="/chat" className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center relative cursor-pointer hover:bg-[#e2ddd5] transition-colors">
             <span className="material-symbols-outlined text-forest text-[20px]">chat</span>
-          </button>
-          <button onClick={() => router.push('/notif')} className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center relative cursor-pointer hover:bg-[#e2ddd5] transition-colors">
+          </Link>
+          <Link href="/notif" className="w-9 h-9 rounded-full bg-cream-dark flex items-center justify-center relative cursor-pointer hover:bg-[#e2ddd5] transition-colors">
             <span className="material-symbols-outlined text-forest text-[20px]">notifications</span>
             {unreadCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error rounded-full border-2 border-cream animate-pulse"></span>}
-          </button>
-          <button onClick={() => router.push('/profile')} className="w-9 h-9 rounded-full bg-forest flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:bg-forest-mid transition-colors">{profile.initials}</button>
+          </Link>
+          <Link href="/profile" className="w-9 h-9 rounded-full bg-forest flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:bg-forest-mid transition-colors">{profile.initials}</Link>
         </div>
       </div>
     );

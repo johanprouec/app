@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { showToast } from "@/components/ui/ToastProvider";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function Register() {
   const router = useRouter();
@@ -16,6 +16,8 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { signUp } = useAuth();
 
   const doRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,21 +35,15 @@ export default function Register() {
     showToast('Creando cuenta...', 'info');
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            producer_type: producerType.toLowerCase().replace(/ /g, '_'),
-          }
-        }
+      const { error } = await signUp(email, password, {
+        first_name: firstName,
+        last_name: lastName,
+        producer_type: producerType,
       });
 
       if (error) throw error;
 
-      showToast('¡Cuenta creada! Revisa tu correo', 'success');
+      showToast('¡Cuenta creada! Revisa tu correo o inicia sesión', 'success');
       router.push('/login');
     } catch (error: any) {
       showToast(error.message || 'Error al registrarse', 'error');

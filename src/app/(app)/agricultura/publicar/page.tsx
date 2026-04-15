@@ -104,12 +104,10 @@ export default function PublicarAgricultura() {
     else docType = docInput.type;
 
     try {
-      // Using globally imported supabase
-      const fileName = `public/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      
+      showToast("Subiendo documento...", "info");
+      const fileName = `public/agro_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const { data, error } = await supabase.storage.from('documents').upload(fileName, file);
       if (error) throw error;
-      
       const { data: urlData } = supabase.storage.from('documents').getPublicUrl(data.path);
       
       setDocuments(prev => [...prev, {
@@ -123,6 +121,37 @@ export default function PublicarAgricultura() {
       showToast("Error al subir archivo: " + err.message, "error");
     } finally {
       e.target.value = '';
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      showToast("El archivo seleccionado no es una imagen", "error");
+      return;
+    }
+
+    try {
+      showToast("Subiendo imagen...", "info");
+      const fileName = `listings/agro_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const { data: buckets } = await supabase.storage.listBuckets();
+      let bucket = 'listings';
+      if (buckets && !buckets.find(b => b.name === 'listings')) {
+        bucket = 'documents';
+      }
+
+      const { data, error } = await supabase.storage.from(bucket).upload(fileName, file);
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+      
+      setForm(prev => ({ ...prev, cover_image_url: urlData.publicUrl }));
+      showToast("Imagen subida correctamente", "success");
+    } catch (err: any) {
+      showToast("Error al subir imagen: " + err.message, "error");
     }
   };
 
@@ -481,25 +510,52 @@ export default function PublicarAgricultura() {
                 <span className="material-symbols-outlined text-[20px]">image</span>
                 Imagen del Producto
               </h3>
-              <div>
-                <label className={labelClass}>URL de imagen principal</label>
+              <p className="text-xs text-stone">Sube una foto real y de buena calidad de tu producto.</p>
+              
+              <div className="flex flex-col gap-4">
                 <input
-                  name="cover_image_url" value={form.cover_image_url}
-                  onChange={handleChange}
-                  className={inputClass}
-                  style={{ color: "#002d1c", background: "#f5f0e8", borderColor: "rgba(0,45,28,0.15)" }}
+                  type="file"
+                  id="imageFileAgro"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  accept="image/*"
                 />
+                
+                {form.cover_image_url ? (
+                  <div className="relative rounded-2xl overflow-hidden aspect-square max-w-[200px] mx-auto shadow-md border border-stone/10 group">
+                    <img
+                      src={form.cover_image_url}
+                      alt="Preview"
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                       <label htmlFor="imageFileAgro" className="bg-white text-forest p-3 rounded-full cursor-pointer shadow-lg active:scale-90 transition-all">
+                         <span className="material-symbols-outlined">edit</span>
+                       </label>
+                    </div>
+                  </div>
+                ) : (
+                  <label htmlFor="imageFileAgro" className="w-full aspect-video rounded-2xl border-2 border-dashed border-stone/20 bg-[#f5f0e8] flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-forest/50 hover:bg-forest/5 transition-all animate-up">
+                    <div className="w-12 h-12 rounded-full bg-forest/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-forest text-2xl">add_a_photo</span>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-forest">Seleccionar imagen</p>
+                      <p className="text-[10px] text-stone uppercase tracking-widest mt-1">JPG, PNG o WEBP</p>
+                    </div>
+                  </label>
+                )}
+
+                {form.cover_image_url && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-sage-light/30 rounded-xl">
+                    <span className="material-symbols-outlined text-forest text-base">link</span>
+                    <p className="text-[10px] text-forest font-medium truncate flex-1">{form.cover_image_url}</p>
+                    <button type="button" onClick={() => setForm(p => ({...p, cover_image_url: ''}))} className="text-red-400 hover:text-red-500">
+                      <span className="material-symbols-outlined text-base">delete</span>
+                    </button>
+                  </div>
+                )}
               </div>
-              {form.cover_image_url && (
-                <div className="rounded-xl overflow-hidden h-40">
-                  <img
-                    src={form.cover_image_url}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={e => (e.currentTarget.style.display = "none")}
-                  />
-                </div>
-              )}
             </Card>
 
             {/* Acciones */}

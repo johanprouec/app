@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/components/ui/ToastProvider";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { getSupabase } from "@/lib/supabase/client";
 
 export default function Login() {
   const router = useRouter();
@@ -11,6 +13,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const { signIn } = useAuth();
+  
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -22,21 +26,20 @@ export default function Login() {
     showToast('Iniciando sesión...', 'info');
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await signIn(email, password);
 
-      if (error) throw error;
-
-      showToast('¡Bienvenido!', 'success');
-      
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get('next');
-      if (next === 'checkout') {
-        router.push('/home');
+      if (error) {
+        showToast(error.message, "error");
       } else {
-        router.push('/home');
+        // Asegurar que la sesión se sincronice antes de redirigir
+        const supabase = getSupabase();
+        await supabase.auth.getSession();
+        
+        showToast("¡Bienvenido!", "success");
+        
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || '/home';
+        router.push(next);
       }
     } catch (error: any) {
       showToast(error.message || 'Error al iniciar sesión', 'error');

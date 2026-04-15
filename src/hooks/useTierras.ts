@@ -20,6 +20,13 @@ export interface ProductiveLand {
   owner_id?: string;
   created_at?: string;
   updated_at?: string;
+  owner?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+    rating?: number;
+  };
 }
 
 export function useTierras(filters: { 
@@ -137,7 +144,10 @@ export function useTierra(id: string | null) {
       try {
         const { data, error: err } = await supabase
           .from('productive_lands')
-          .select('*')
+          .select(`
+            *,
+            owner:profiles!owner_id (id, first_name, last_name, avatar_url, rating)
+          `)
           .eq('id', id)
           .single();
 
