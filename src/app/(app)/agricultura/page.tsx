@@ -7,21 +7,19 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { CartDrawer } from "@/components/ui/CartDrawer";
 import { useCart } from "@/hooks/useCart";
-import { useLivestockListings, LivestockFilters } from "@/hooks/useListings";
+import { useAgricultureListings, AgricultureFilters } from "@/hooks/useListings";
 
-const SPECIES_FILTERS = ["Todos", "Bovino", "Porcino", "Equino", "Ovino", "Caprino", "Avícola"];
+const CATEGORY_FILTERS = ["Todos", "Tubérculos", "Vegetales", "Frutas", "Cereales", "Orgánico"];
 
-const BADGE_CLASSES: Record<string, string> = {
-  bovino: "bg-forest text-white",
-  porcino: "bg-forest-mid text-white",
-  equino: "bg-forest-light text-white",
-  ovino: "bg-amber text-white",
-  caprino: "bg-amber text-white",
-  avicola: "bg-amber-light text-forest",
+const CATEGORY_EMOJIS: Record<string, string> = {
+  "tubérculos": "🥔", vegetales: "🥬", frutas: "🍎", cereales: "🌾",
 };
 
-const ANIMAL_EMOJIS: Record<string, string> = {
-  bovino: "🐄", porcino: "🐷", equino: "🐴", ovino: "🐑", caprino: "🐐", avicola: "🐔",
+const BADGE_CLASSES: Record<string, string> = {
+  "tubérculos": "bg-amber-light text-forest",
+  vegetales: "bg-forest-mid text-white",
+  frutas: "bg-error text-white",
+  cereales: "bg-amber text-white",
 };
 
 function RangeSlider({
@@ -52,35 +50,32 @@ function RangeSlider({
   );
 }
 
-export default function Ganado() {
+export default function Agricultura() {
   const router = useRouter();
   const { count: cartCount, addToCart } = useCart();
 
-  const [speciesFilter, setSpeciesFilter] = useState("Todos");
-  const [weightRange, setWeightRange] = useState<[number, number]>([0, 800]);
-  const [ageRange, setAgeRange] = useState<[number, number]>([0, 15]);
+  const [categoryFilter, setCategoryFilter] = useState("Todos");
+  const [saleUnitFilter, setSaleUnitFilter] = useState("Todos");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000000]);
-  const [breedFilter, setBreedFilter] = useState("");
+  const [varietyFilter, setVarietyFilter] = useState("");
   const [ratingFilter, setRatingFilter] = useState<{value: number, label: string}>({value: 0, label: "Todas las calificaciones"});
   const [sortBy, setSortBy] = useState<"recent" | "price_asc" | "price_desc">("recent");
   const [showFilters, setShowFilters] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  const filters: LivestockFilters = {
-    animalType: speciesFilter,
-    minWeight: weightRange[0] > 0 ? weightRange[0] : undefined,
-    maxWeight: weightRange[1] < 800 ? weightRange[1] : undefined,
-    minAge: ageRange[0] > 0 ? ageRange[0] : undefined,
-    maxAge: ageRange[1] < 15 ? ageRange[1] : undefined,
+  const filters: AgricultureFilters = {
+    category: categoryFilter !== "Todos" && categoryFilter !== "Orgánico" ? categoryFilter : undefined,
+    sale_unit: saleUnitFilter !== "Todos" ? saleUnitFilter : undefined,
+    is_organic: categoryFilter === "Orgánico" ? true : undefined,
+    variety: varietyFilter || undefined,
     minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
     maxPrice: priceRange[1] < 50000000 ? priceRange[1] : undefined,
-    breed: breedFilter || undefined,
     minRating: ratingFilter.value > 0 ? ratingFilter.value : undefined,
     sortBy: sortBy,
   };
 
-  const { listings, loading, refetch } = useLivestockListings(filters);
+  const { listings, loading, refetch } = useAgricultureListings(filters);
 
   const formatPrice = (val: number) => {
     if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
@@ -96,11 +91,10 @@ export default function Ganado() {
   };
 
   const activeFilterCount = [
-    speciesFilter !== "Todos",
-    weightRange[0] > 0 || weightRange[1] < 800,
-    ageRange[0] > 0 || ageRange[1] < 15,
+    categoryFilter !== "Todos",
+    saleUnitFilter !== "Todos",
     priceRange[0] > 0 || priceRange[1] < 50000000,
-    breedFilter !== "",
+    varietyFilter !== "",
     ratingFilter.value > 0,
     sortBy !== "recent"
   ].filter(Boolean).length;
@@ -108,7 +102,7 @@ export default function Ganado() {
   return (
     <>
       <TopNav
-        title="Mercado de Ganado"
+        title="Mercado Agrícola"
         rightAction={
           <div className="flex items-center gap-2">
             <button
@@ -122,7 +116,7 @@ export default function Ganado() {
                 </span>
               )}
             </button>
-            <Button variant="amber" className="!py-2 !px-4 !text-sm" onClick={() => router.push("/ganado/publicar")}>
+            <Button variant="amber" className="!py-2 !px-4 !text-sm" onClick={() => router.push("/agricultura/publicar")}>
               <span className="material-symbols-outlined text-[16px]">add</span> Publicar
             </Button>
           </div>
@@ -131,18 +125,16 @@ export default function Ganado() {
 
       <div className="scroll-area">
         <div className="px-5 pt-4 pb-8 space-y-4">
-          <p className="text-xs text-stone animate-up">Ganado certificado · Transacciones verificadas</p>
+          <p className="text-xs text-stone animate-up">Productos frescos directamente del campo</p>
 
-          {/* Species chips */}
           <div className="flex gap-2 overflow-x-auto pb-1 animate-up d1" style={{ scrollbarWidth: "none" }}>
-            {SPECIES_FILTERS.map(f => (
-              <Chip key={f} selected={speciesFilter === f} onClick={() => setSpeciesFilter(f)}>
-                {ANIMAL_EMOJIS[f.toLowerCase()] ? `${ANIMAL_EMOJIS[f.toLowerCase()]} ${f}` : f === "Certificado" ? "✓ Certificado" : f}
+            {CATEGORY_FILTERS.map(f => (
+              <Chip key={f} selected={categoryFilter === f} onClick={() => setCategoryFilter(f)}>
+                {CATEGORY_EMOJIS[f.toLowerCase()] ? `${CATEGORY_EMOJIS[f.toLowerCase()]} ${f}` : f === "Orgánico" ? "🌱 Orgánico" : f}
               </Chip>
             ))}
           </div>
 
-          {/* Advanced filter toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 text-sm font-semibold transition-all cursor-pointer animate-up d2 px-4 py-2 rounded-xl ${
@@ -159,12 +151,11 @@ export default function Ganado() {
             <span className="material-symbols-outlined text-[18px] ml-auto">{showFilters ? "expand_less" : "expand_more"}</span>
           </button>
 
-          {/* Filter panel */}
           {showFilters && (
             <Card className="p-4 space-y-4 animate-up border-forest/20">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">Ordenar por</label>
+                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">Ordenar por</label>
                   <select
                     value={sortBy}
                     onChange={e => setSortBy(e.target.value as any)}
@@ -188,16 +179,32 @@ export default function Ganado() {
                   </select>
                 </div>
               </div>
-              
-              <div>
-                <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">Filtrar por Raza</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Brahman, Angus, Holstein..."
-                  value={breedFilter}
-                  onChange={e => setBreedFilter(e.target.value)}
-                  className="w-full border border-forest/20 rounded-xl px-3 py-2 text-sm text-forest focus:outline-none focus:border-forest bg-[#f5f0e8]"
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">Unidad de Venta</label>
+                  <select
+                    value={saleUnitFilter}
+                    onChange={e => setSaleUnitFilter(e.target.value)}
+                    className="w-full border border-forest/20 rounded-xl px-3 py-2 text-sm text-forest focus:outline-none focus:border-forest bg-[#f5f0e8]"
+                  >
+                    <option value="Todos">Todas las unidades</option>
+                    <option value="kg">Por kilogramo (kg)</option>
+                    <option value="unidad">Por unidad</option>
+                    <option value="bulto">Por bulto</option>
+                    <option value="tonelada">Por tonelada</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-forest uppercase tracking-wider mb-1.5">Filtrar por Variedad</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Hass..."
+                    value={varietyFilter}
+                    onChange={e => setVarietyFilter(e.target.value)}
+                    className="w-full border border-forest/20 rounded-xl px-3 py-2 text-sm text-forest focus:outline-none focus:border-forest bg-[#f5f0e8]"
+                  />
+                </div>
               </div>
 
               <RangeSlider
@@ -210,29 +217,12 @@ export default function Ganado() {
               />
               <p className="text-xs text-stone mt-[-10px]">{formatPrice(priceRange[0])} - {priceRange[1] >= 50000000 ? formatPrice(50000000) + '+' : formatPrice(priceRange[1])}</p>
 
-              <RangeSlider
-                label="Peso promedio"
-                unit=" kg"
-                min={0}
-                max={800}
-                value={weightRange}
-                onChange={setWeightRange}
-              />
-              <RangeSlider
-                label="Edad promedio"
-                unit=" años"
-                min={0}
-                max={15}
-                value={ageRange}
-                onChange={setAgeRange}
-              />
               <button
                 onClick={() => { 
-                  setWeightRange([0, 800]); 
-                  setAgeRange([0, 15]); 
-                  setSpeciesFilter("Todos");
+                  setSaleUnitFilter("Todos"); 
+                  setCategoryFilter("Todos"); 
                   setPriceRange([0, 50000000]);
-                  setBreedFilter("");
+                  setVarietyFilter("");
                   setRatingFilter({value: 0, label: "Todas las calificaciones"});
                   setSortBy("recent");
                 }}
@@ -243,7 +233,6 @@ export default function Ganado() {
             </Card>
           )}
 
-          {/* Listings */}
           <div className="grid grid-cols-1 gap-4">
             {loading ? (
               [1, 2, 3].map(i => (
@@ -252,32 +241,32 @@ export default function Ganado() {
             ) : listings.length === 0 ? (
               <Card className="p-10 text-center">
                 <span className="material-symbols-outlined text-[48px] text-stone/30">search_off</span>
-                <p className="text-stone mt-2">No hay publicaciones con esos filtros</p>
+                <p className="text-stone mt-2">No hay productos con esos filtros</p>
                 <button onClick={refetch} className="text-xs text-forest underline mt-2 cursor-pointer">Recargar</button>
               </Card>
             ) : (
               listings.map((item, idx) => {
-                const emoji = ANIMAL_EMOJIS[item.animal_type] || "🐄";
-                const badgeClass = BADGE_CLASSES[item.animal_type] || "bg-forest text-white";
+                const emoji = CATEGORY_EMOJIS[item.category] || "🌱";
+                const badgeClass = BADGE_CLASSES[item.category] || "bg-forest text-white";
                 const isAdded = addedIds.has(item.id);
                 return (
                   <Card
                     key={item.id}
                     className={`overflow-hidden animate-up d${Math.min(idx + 1, 5)} cursor-pointer`}
-                    onClick={() => router.push(`/ganado/${item.id}`)}
+                    onClick={() => router.push(`/agricultura/${item.id}`)}
                   >
                     <div className="h-48 relative overflow-hidden">
                       <img
-                        src={item.cover_image_url || "https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=600&q=80"}
+                        src={item.cover_image_url || "https://images.unsplash.com/photo-1595856454070-5bfa9b8cc5cc?w=600&q=80"}
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                         alt={item.title}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                       <div className={`chip absolute top-3 left-3 text-xs ${badgeClass}`}>
-                        {emoji} {item.animal_type.toUpperCase()}{item.breed ? ` · ${item.breed}` : ""}
+                        {emoji} {item.category.toUpperCase()}{item.variety ? ` · ${item.variety}` : ""}
                       </div>
-                      {item.is_certified && (
-                        <div className="chip absolute top-3 right-3 bg-amber-light text-forest text-xs">✓ Cert.</div>
+                      {item.is_organic && (
+                        <div className="chip absolute top-3 right-3 bg-green-500 text-white text-xs">🌱 Orgánico</div>
                       )}
                       {item.seller && (
                         <div className="absolute bottom-3 left-3 flex items-center gap-2">
@@ -298,9 +287,7 @@ export default function Ganado() {
                         {item.location_city && item.location_department
                           ? `${item.location_city}, ${item.location_department}`
                           : item.location_department || "Colombia"}
-                        {" · "}{item.units} cab.
-                        {item.avg_weight_kg && ` · ~${item.avg_weight_kg}kg`}
-                        {item.avg_age_years && ` · ${item.avg_age_years}a`}
+                        {" · "}{item.units_available} {item.sale_unit} DISP.
                       </p>
                       {item.seller && (
                         <p className="text-xs text-stone mt-0.5">

@@ -69,6 +69,14 @@ export default function TierrasDetail() {
   // Convert polygon data for Leaflet [lng, lat] -> [lat, lng]
   const leafletPolygon = tierra.polygon_data?.map((p: [number, number]) => [p[1], p[0]] as [number, number]);
 
+  const ownerName = tierra.owner 
+    ? `${tierra.owner.first_name} ${tierra.owner.last_name}`
+    : "María Reyes"; // Fallback to avoid empty state if join fails
+    
+  const ownerInitials = tierra.owner
+    ? `${tierra.owner.first_name.charAt(0)}${tierra.owner.last_name.charAt(0)}`
+    : "MR";
+
   return (
     <div className="bg-[#07090c] min-h-screen text-white flex flex-col">
       <div className="scroll-area flex-1 pb-24">
@@ -182,11 +190,11 @@ export default function TierrasDetail() {
               <Card className="p-7 bg-[#111827] border-white/10 rounded-[32px] space-y-6 shadow-2xl">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#00e5a0] to-[#0066ff] flex items-center justify-center font-bold text-[#07090c] text-xl shadow-lg ring-4 ring-white/5">
-                    MR
+                    {ownerInitials}
                   </div>
                   <div>
-                    <p className="font-bold text-lg text-white">María Reyes</p>
-                    <p className="text-xs text-[#00e5a0] font-medium tracking-tight">⭐ 4.8 · Inversionista Verificada</p>
+                    <p className="font-bold text-lg text-white">{ownerName}</p>
+                    <p className="text-xs text-[#00e5a0] font-medium tracking-tight">⭐ {tierra.owner?.rating || '4.8'} · Inversionista Verificada</p>
                   </div>
                 </div>
                 

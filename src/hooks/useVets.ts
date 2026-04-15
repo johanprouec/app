@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+"use client";
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type HookError = { message: string; code?: string; hint?: string };
+export type HookError = { message: string; code?: string; hint?: string };
 
-function toHookError(err: unknown): HookError {
+export function toHookError(err: unknown): HookError {
   if (err instanceof Error) {
     return { message: err.message };
   }
@@ -38,6 +39,14 @@ export interface Vet {
   status: string;
   created_at: string;
   updated_at: string;
+  // Joined from profiles
+  user?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+  };
+  specialties?: { specialty: string }[];
 }
 
 export interface Service {
@@ -64,15 +73,22 @@ export function useVets(filters: {
       try {
         let query = supabase
           .from('veterinarian_profiles')
-          .select('*')
+          .select(`
+            *,
+            user:profiles!user_id (id, first_name, last_name, avatar_url),
+            specialties:vet_specialties (specialty)
+          `)
           .eq('status', 'active');
 
-        // Optional technical specialty filter via inner join
+        // Optional technical specialty filter
         if (filters.technicalSpecialty && filters.technicalSpecialty !== 'Todos') {
-          // Note: using inner join to filter by related table
-          query = supabase
+           query = supabase
             .from('veterinarian_profiles')
-            .select('*, vet_specialties!inner(specialty)')
+            .select(`
+              *, 
+              user:profiles!user_id (id, first_name, last_name, avatar_url),
+              vet_specialties!inner(specialty)
+            `)
             .eq('status', 'active')
             .eq('vet_specialties.specialty', filters.technicalSpecialty);
         }
@@ -91,14 +107,12 @@ export function useVets(filters: {
 
         let filteredData = data as Vet[];
 
-        // Deduplication if technicalSpecialty was used (PostgREST join might duplicate)
         if (filters.technicalSpecialty && filters.technicalSpecialty !== 'Todos') {
           const uniqueMap = new Map();
           filteredData.forEach(v => uniqueMap.set(v.id, v));
           filteredData = Array.from(uniqueMap.values());
         }
 
-        // Animal specialization filter (Array contains)
         if (filters.animalSpecialty && filters.animalSpecialty !== 'Todos') {
           filteredData = filteredData.filter(v => 
             v.animal_specialization?.includes(filters.animalSpecialty!)
@@ -117,6 +131,12 @@ export function useVets(filters: {
   }, [filters.search, filters.animalSpecialty, filters.technicalSpecialty, filters.city]);
 
   return { vets, loading, error };
+}
+
+// Added from feature branch
+export function useVeterinarians(filter?: string) {
+  const { vets, loading, error } = useVets({ animalSpecialty: filter });
+  return { vets, loading, error: error?.message || null };
 }
 
 export function useAllTechnicalSpecialties() {
@@ -179,7 +199,11 @@ export function useVet(id: string) {
       try {
         const { data, error: err } = await supabase
           .from('veterinarian_profiles')
-          .select('*')
+          .select(`
+            *,
+            user:profiles!user_id (id, first_name, last_name, avatar_url),
+            specialties:vet_specialties (specialty)
+          `)
           .eq('id', id)
           .single();
 
@@ -282,7 +306,7 @@ export function useVetSpecialties(vetId: string) {
 export function useSimilarVets(currentVet: Vet | null) {
   const [vets, setVets] = useState<Vet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+  const [error, setError] = useState<HookError | null>(null);
 
   useEffect(() => {
     if (!currentVet?.id) return;
@@ -295,10 +319,12 @@ export function useSimilarVets(currentVet: Vet | null) {
       try {
         const { id, location_city, location_department } = currentVet;
         
-        // Find vets in same city or department, exclude self
         const { data, error: err } = await supabase
           .from('veterinarian_profiles')
-          .select('*')
+          .select(`
+            *,
+            user:profiles!user_id (id, first_name, last_name, avatar_url)
+          `)
           .eq('status', 'active')
           .neq('id', id)
           .or(`location_city.eq.${location_city},location_department.eq.${location_department}`)
@@ -319,7 +345,6 @@ export function useSimilarVets(currentVet: Vet | null) {
   return { vets, loading, error };
 }
 
-// Still available for later use once appointments table is confirmed/available
 export interface Appointment {
   id: string;
   patient_id: string;
@@ -418,6 +443,41 @@ export async function createAppointment(appointment: {
   }
 
   return result.appointment;
+}
+
+// Added from feature branch
+export function useCreateAppointment() {
+  const [loading, setLoading] = useState(false);
+
+  const createAppointmentFn = async (data: {
+    vet_id: string;
+    scheduled_at: string;
+    reason?: string;
+    price?: number;
+  }) => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return { error: new Error("Not authenticated") };
+      }
+
+      const { error } = await supabase.from("appointments").insert({
+        ...data,
+        patient_id: user.id,
+        status: "pending",
+      });
+
+      setLoading(false);
+      return { error };
+    } catch (err) {
+      setLoading(false);
+      return { error: err };
+    }
+  };
+
+  return { createAppointment: createAppointmentFn, loading };
 }
 
 export function useVetAccount() {
@@ -520,7 +580,7 @@ export async function createVetReview(review: {
     .from('vet_reviews')
     .insert([
       {
-        user_id: user.id,
+        reviewer_id: user.id,
         vet_id: review.vet_id,
         appointment_id: review.appointment_id,
         rating: review.rating,

@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -7,7 +8,13 @@ export interface Notification {
   user_id: string;
   title: string;
   message: string;
+  body?: string; // from feature
   type: 'appointment' | 'chat' | 'system';
+  notification_type?: string; // from feature
+  severity?: string; // from feature
+  icon?: string;
+  related_entity_type?: string;
+  related_entity_id?: string;
   link?: string;
   is_read: boolean;
   created_at: string;
@@ -68,7 +75,7 @@ export function useNotifications() {
           } else if (payload.eventType === 'UPDATE') {
             const updatedNotif = payload.new as Notification;
             setNotifications(prev => prev.map(n => n.id === updatedNotif.id ? updatedNotif : n));
-            // Recalcular unread count de forma simple
+            // Recalcular unread count
             setUnreadCount(prev => updatedNotif.is_read ? Math.max(0, prev - 1) : prev + 1);
           }
         })
@@ -83,15 +90,6 @@ export function useNotifications() {
     };
   }, []);
 
-  const markAsRead = async (id: string) => {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id);
-
-    if (error) throw error;
-  };
-
   const markAllAsRead = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -103,6 +101,19 @@ export function useNotifications() {
       .eq('is_read', false);
 
     if (error) throw error;
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
+
+  const markAsRead = async (id: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id);
+
+    if (error) throw error;
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   return { notifications, unreadCount, loading, markAsRead, markAllAsRead };

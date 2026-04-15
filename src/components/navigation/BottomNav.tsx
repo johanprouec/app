@@ -13,6 +13,7 @@ export function BottomNav() {
   const links = [
     { name: "Inicio", path: "/home", icon: "home", fill: true },
     { name: "Ganado", path: "/ganado", icon: "hive", fill: true },
+    { name: "Agro", path: "/agricultura", icon: "eco", fill: true },
     { name: "Tierras", path: "/tierras", icon: "landscape", fill: true },
     { name: "Vets", path: "/vets", icon: "medical_services", fill: true },
     { name: "Perfil", path: "/profile", icon: "person", fill: true },

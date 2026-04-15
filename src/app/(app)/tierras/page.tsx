@@ -6,7 +6,6 @@ import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
 import { useTierras, useMyAssets, toggleListingStatus, purchaseProperty } from "@/hooks/useTierras";
 
@@ -55,7 +54,6 @@ function TierrasContent() {
       />
       <div className="scroll-area">
         <div className="px-5 pt-4 pb-4 space-y-4">
-          {/* Main Navigation Tabs */}
           <div className="flex gap-2 animate-up overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
             <Chip selected={tab==='lista'} onClick={()=>setTab('lista')}>🗂 Lista</Chip>
             <Chip selected={tab==='mapa'} onClick={()=>setTab('mapa')}>🗺 Mapa</Chip>
@@ -63,9 +61,7 @@ function TierrasContent() {
             <Chip selected={tab==='3d'} onClick={()=>setTab('3d')}>🌐 Motor 3D</Chip>
           </div>
 
-          {/* Market vs Assets Toggle */}
           <div className="relative flex p-1.5 bg-[#1a2030] border border-white/15 rounded-[20px] w-full shadow-inner">
-            {/* Sliding indicator background */}
             <div
               className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-[14px] transition-all duration-300 ease-in-out bg-[#00e5a0] shadow-[0_4px_20px_rgba(0,229,160,0.3)]"
               style={{ left: viewMode === 'market' ? '6px' : 'calc(50% + 0px)' }}
@@ -122,7 +118,6 @@ function TierrasContent() {
               ) : (
                 currentItems.map(tierra => (
                   <Card key={tierra.id} className="group overflow-hidden flex flex-col h-full border border-white/10 shadow-xl hover:shadow-[#00e5a0]/10 transition-all duration-500 bg-[#111827] rounded-[32px]">
-                    {/* Top Image Section */}
                     <div className="relative aspect-[16/10] overflow-hidden">
                       <img 
                         src={tierra.image_url} 
@@ -153,7 +148,6 @@ function TierrasContent() {
                       </div>
                     </div>
 
-                    {/* Content Section */}
                     <div className="p-6 flex flex-col flex-1 bg-gradient-to-b from-[#111827] to-[#0f172a]">
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5">
@@ -220,31 +214,17 @@ function TierrasContent() {
             <div className="space-y-3 animate-up d2">
               <Card className="overflow-hidden">
                 <div className="map-mock h-72 relative rounded-2xl">
-                  {/* Simulated Colombia map labels */}
                   <p className="absolute text-xs font-bold text-forest/40 top-4 left-1/2 -translate-x-1/2">COLOMBIA</p>
-                  <p className="absolute text-[9px] text-forest/30 top-12 left-1/3">Medellín</p>
-                  <p className="absolute text-[9px] text-forest/30 top-8 right-1/3">Bogotá</p>
-                  <p className="absolute text-[9px] text-forest/30 bottom-1/3 left-1/4">Cali</p>
                   
-                  {/* Dynamic pins if we had coordinates, for now keeping mock-ish pins but labels could be dynamic */}
                   {tierras.slice(0, 4).map((t, idx) => (
                     <div key={t.id} className="map-pin" style={{top:`${30 + idx*10}%`, left:`${40 + idx*5}%`}}>
                       ${t.price_per_ha}M/ha
                     </div>
                   ))}
 
-                  {/* Controls */}
                   <div className="absolute top-3 right-3 flex flex-col gap-1">
                     <button className="w-8 h-8 rounded-lg bg-white shadow text-forest font-bold text-lg flex items-center justify-center border-none cursor-pointer">+</button>
                     <button className="w-8 h-8 rounded-lg bg-white shadow text-forest font-bold text-lg flex items-center justify-center border-none cursor-pointer">−</button>
-                  </div>
-                  <div className="absolute bottom-3 right-3 flex flex-col gap-1">
-                    <button className="bg-white text-forest border-[1.5px] border-forest rounded-xl py-1.5 px-2.5 font-semibold text-xs transition-colors hover:bg-forest/5 flex items-center gap-1 cursor-pointer">
-                      <span className="material-symbols-outlined text-[14px]">thermostat</span> Clima
-                    </button>
-                    <button className="bg-white text-forest border-[1.5px] border-forest rounded-xl py-1.5 px-2.5 font-semibold text-xs transition-colors hover:bg-forest/5 flex items-center gap-1 cursor-pointer">
-                      <span className="material-symbols-outlined text-[14px]">layers</span> Suelo
-                    </button>
                   </div>
                 </div>
               </Card>
@@ -285,35 +265,9 @@ function TierrasContent() {
                   <h3 className="font-semibold text-forest">Resultado · Lote A</h3>
                   <span className="chip bg-sage-light text-forest tracking-wider uppercase text-[11px] font-bold py-1 px-3 rounded-full">✓ Analizado</span>
                 </div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1"><span className="text-stone font-medium">pH del suelo</span><span className="font-bold text-forest">6.4 (Óptimo)</span></div>
-                    <ProgressBar progress={64} className="bg-forest-light" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1"><span className="text-stone font-medium">Materia orgánica</span><span className="font-bold text-forest">3.8% (Bueno)</span></div>
-                    <ProgressBar progress={76} className="bg-forest-light" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1"><span className="text-stone font-medium">Nitrógeno disponible</span><span className="font-bold text-amber">Bajo (22 ppm)</span></div>
-                    <ProgressBar progress={28} className="bg-amber" colorClass="bg-amber" />
-                  </div>
-                </div>
                 <div className="mt-4 p-3 rounded-xl bg-amber-pale">
                   <p className="text-xs font-bold text-amber mb-1">💡 Recomendación IA</p>
                   <p className="text-xs text-stone leading-relaxed">Aplicar 80 kg/ha de urea antes de la siembra. Rendimiento estimado: <strong className="text-forest">4.6 ton/ha</strong> de maíz. Cultivos recomendados: maíz, soya, sorgo.</p>
-                </div>
-              </Card>
-
-              <Card className="p-4">
-                <h3 className="font-semibold text-forest mb-3">Predicción de rendimiento 2026</h3>
-                <div className="flex items-end gap-2 h-24">
-                  <div className="flex flex-col items-center gap-1 flex-1"><div className="bar flex-1 w-full" style={{height:'50%'}}></div><p className="text-[9px] text-stone">Ene</p></div>
-                  <div className="flex flex-col items-center gap-1 flex-1"><div className="bar flex-1 w-full" style={{height:'65%'}}></div><p className="text-[9px] text-stone">Feb</p></div>
-                  <div className="flex flex-col items-center gap-1 flex-1"><div className="bar flex-1 w-full" style={{height:'72%'}}></div><p className="text-[9px] text-stone">Mar</p></div>
-                  <div className="flex flex-col items-center gap-1 flex-1"><div className="bar flex-1 w-full" style={{height:'68%'}}></div><p className="text-[9px] text-stone">Abr</p></div>
-                  <div className="flex flex-col items-center gap-1 flex-1"><div className="bar flex-1 w-full" style={{height:'80%'}}></div><p className="text-[9px] text-stone">May</p></div>
-                  <div className="flex flex-col items-center gap-1 flex-1"><div className="bar current flex-1 w-full bg-forest" style={{height:'100%'}}></div><p className="text-[9px] text-stone">Jun</p></div>
                 </div>
               </Card>
             </div>
@@ -348,7 +302,6 @@ function TierrasContent() {
               </Card>
             </div>
           )}
-
         </div>
       </div>
     </>

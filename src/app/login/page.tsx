@@ -13,29 +13,43 @@ export default function Login() {
 
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      showToast(error.message, 'error');
+    if (!email || !password) {
+      showToast('Por favor completa todos los campos', 'error');
       return;
     }
 
-    showToast('Sesión iniciada', 'success');
-    router.push('/home');
+    setLoading(true);
+    showToast('Iniciando sesión...', 'info');
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      showToast('¡Bienvenido!', 'success');
+      
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      if (next === 'checkout') {
+        router.push('/home');
+      } else {
+        router.push('/home');
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Error al iniciar sesión', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="bg-cream h-full flex flex-col">
       <div className="scroll-area">
         <div className="max-w-md mx-auto px-6 pt-16 pb-10">
-          <button onClick={() => router.push('/')} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer">
+          <button onClick={() => router.back()} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer border-none bg-transparent">
             <span className="material-symbols-outlined text-[18px]">arrow_back</span> Volver
           </button>
           <div className="mb-8 animate-up">
@@ -47,14 +61,30 @@ export default function Login() {
               <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Correo</label>
               <div className="field flex items-center gap-3 px-4 h-[52px]">
                 <span className="material-symbols-outlined text-stone text-xl">mail</span>
-                <input type="email" placeholder="tu@correo.com" className="flex-1 bg-transparent text-forest text-sm py-3.5 w-full" value={email} onChange={(e) => setEmail(e.target.value)} required/>
+                <input 
+                  type="email" 
+                  placeholder="tu@correo.com" 
+                  className="flex-1 bg-transparent text-forest text-sm py-3.5 w-full outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                />
               </div>
             </div>
             <div className="animate-up d2">
               <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Contraseña</label>
               <div className="field flex items-center gap-3 px-4 h-[52px]">
                 <span className="material-symbols-outlined text-stone text-xl">lock</span>
-                <input type={showPwd ? "text" : "password"} placeholder="••••••••" className="flex-1 bg-transparent text-forest text-sm py-3.5 w-full" value={password} onChange={(e) => setPassword(e.target.value)} required/>
+                <input 
+                  type={showPwd ? "text" : "password"} 
+                  placeholder="••••••••" 
+                  className="flex-1 bg-transparent text-forest text-sm py-3.5 w-full outline-none"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                />
                 <button type="button" onClick={() => setShowPwd(!showPwd)} className="text-stone cursor-pointer border-none bg-transparent">
                   <span className="material-symbols-outlined text-xl">{showPwd ? 'visibility_off' : 'visibility'}</span>
                 </button>
@@ -64,7 +94,7 @@ export default function Login() {
               <button type="button" className="text-amber text-sm font-semibold cursor-pointer border-none bg-transparent">¿Olvidaste tu contraseña?</button>
             </div>
             <button type="submit" disabled={loading} className="bg-forest text-white rounded-xl py-2.5 px-5 font-bold text-sm hover:bg-forest-mid w-full flex justify-center items-center gap-2 h-[52px] animate-up d3 cursor-pointer disabled:opacity-60">
-              {loading ? 'Entrando...' : 'Iniciar sesión'} <span className="material-symbols-outlined">login</span>
+              {loading ? 'Cargando...' : 'Iniciar sesión'} <span className="material-symbols-outlined">login</span>
             </button>
           </form>
           <div className="text-center mt-6 text-sm animate-up d4">

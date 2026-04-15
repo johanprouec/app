@@ -5,12 +5,12 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { showToast } from "@/components/ui/ToastProvider";
 import { CartDrawer } from "@/components/ui/CartDrawer";
-import { useLivestockDetail } from "@/hooks/useListings";
+import { useAgricultureDetail } from "@/hooks/useListings";
 import { useCart } from "@/hooks/useCart";
 import { useState } from "react";
 
-const ANIMAL_EMOJIS: Record<string, string> = {
-  bovino: "🐄", porcino: "🐷", equino: "🐴", ovino: "🐑", caprino: "🐐", avicola: "🐔",
+const CATEGORY_EMOJIS: Record<string, string> = {
+  "tubérculos": "🥔", vegetales: "🥬", frutas: "🍎", cereales: "🌾",
 };
 
 function StarRating({ rating }: { rating: number }) {
@@ -29,11 +29,11 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-export default function GanadoDetail() {
+export default function AgriculturaDetail() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { listing, loading } = useLivestockDetail(id);
+  const { listing, loading } = useAgricultureDetail(id);
   const { addToCart, count: cartCount } = useCart();
   const [cartAdded, setCartAdded] = useState(false);
   const [showCart, setShowCart] = useState(false);
@@ -68,7 +68,7 @@ export default function GanadoDetail() {
       <div className="bg-cream h-full flex flex-col items-center justify-center gap-4 p-8 text-center">
         <span className="material-symbols-outlined text-[48px] text-stone/30">search_off</span>
         <p className="text-stone">Publicación no encontrada</p>
-        <Button onClick={() => router.push("/ganado")}>Volver al mercado</Button>
+        <Button onClick={() => router.push("/agricultura")}>Volver al mercado</Button>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export default function GanadoDetail() {
   const sellerInitials = listing.seller
     ? `${listing.seller.first_name?.charAt(0)}${listing.seller.last_name?.charAt(0)}`
     : "V";
-  const emoji = ANIMAL_EMOJIS[listing.animal_type] || "🐄";
+  const emoji = CATEGORY_EMOJIS[listing.category] || "🌱";
   const docs: Array<{ name: string; url: string; type: string }> =
     Array.isArray(listing.documents) ? listing.documents : [];
 
@@ -89,7 +89,7 @@ export default function GanadoDetail() {
         {/* Hero image */}
         <div className="relative">
           <img
-            src={listing.cover_image_url || "https://images.unsplash.com/photo-1546445317-29f4545e9d53?w=800&q=80"}
+            src={listing.cover_image_url || "https://images.unsplash.com/photo-1595856454070-5bfa9b8cc5cc?w=800&q=80"}
             className="w-full h-64 object-cover"
             alt={listing.title}
           />
@@ -112,8 +112,8 @@ export default function GanadoDetail() {
               </span>
             )}
           </button>
-          {listing.is_certified && (
-            <div className="chip absolute bottom-4 right-4 bg-amber-light text-forest">✓ Certificado</div>
+          {listing.is_organic && (
+            <div className="chip absolute bottom-4 right-4 bg-green-500 text-white">🌱 Orgánico</div>
           )}
         </div>
 
@@ -121,7 +121,7 @@ export default function GanadoDetail() {
           {/* Title & price */}
           <div>
             <Chip className="mb-2 !bg-forest !text-white" selected={false}>
-              {emoji} {listing.animal_type.toUpperCase()}{listing.breed ? ` · ${listing.breed.toUpperCase()}` : ""}
+              {emoji} {listing.category.toUpperCase()}{listing.variety ? ` · ${listing.variety.toUpperCase()}` : ""}
             </Chip>
             <div className="flex items-start justify-between gap-3">
               <h2 className="font-headline font-bold text-2xl text-forest flex-1">{listing.title}</h2>
@@ -136,19 +136,19 @@ export default function GanadoDetail() {
           {/* Stats grid */}
           <div className="grid grid-cols-3 gap-3">
             <Card className="p-3 text-center">
-              <p className="text-[10px] uppercase font-bold text-stone">Unidades</p>
-              <p className="font-headline font-bold text-xl text-forest mt-1">{listing.units}</p>
+              <p className="text-[10px] uppercase font-bold text-stone">Cantidad</p>
+              <p className="font-headline font-bold text-xl text-forest mt-1">{listing.units_available}</p>
             </Card>
             <Card className="p-3 text-center">
-              <p className="text-[10px] uppercase font-bold text-stone">Peso prom.</p>
+              <p className="text-[10px] uppercase font-bold text-stone">Unidad</p>
               <p className="font-headline font-bold text-xl text-forest mt-1">
-                {listing.avg_weight_kg ? `${listing.avg_weight_kg}kg` : "N/D"}
+                {listing.sale_unit.toUpperCase()}
               </p>
             </Card>
             <Card className="p-3 text-center">
-              <p className="text-[10px] uppercase font-bold text-stone">Edad prom.</p>
-              <p className="font-headline font-bold text-xl text-forest mt-1">
-                {listing.avg_age_years ? `${listing.avg_age_years}a` : "N/D"}
+              <p className="text-[10px] uppercase font-bold text-stone">Variedad</p>
+              <p className="font-headline font-bold text-lg text-forest mt-1 truncate">
+                {listing.variety || "N/A"}
               </p>
             </Card>
           </div>
@@ -169,14 +169,14 @@ export default function GanadoDetail() {
               <span className="material-symbols-outlined text-[18px]">verified</span>
               Certificados y Documentos
             </h3>
-            {listing.health_certificates?.length > 0 || docs.length > 0 ? (
+            {listing.certifications?.length > 0 || docs.length > 0 ? (
               <div className="space-y-2">
-                {(listing.health_certificates || []).map((cert: string, i: number) => (
+                {(listing.certifications || []).map((cert: string, i: number) => (
                   <div key={i} className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
                     <span className="material-symbols-outlined fill-icon text-[20px] text-forest">verified</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-forest truncate">{cert}</p>
-                      <p className="text-xs text-stone">Certificado sanitario</p>
+                      <p className="text-xs text-stone">Certificación</p>
                     </div>
                   </div>
                 ))}
@@ -229,7 +229,7 @@ export default function GanadoDetail() {
               <Button
                 variant="outline"
                 className="!py-2 !px-3 !text-sm flex-shrink-0"
-                onClick={() => router.push(`/chat/new?userId=${listing.seller_id}&type=livestock&listingId=${listing.id}`)}
+                onClick={() => router.push(`/chat/new?userId=${listing.seller_id}&type=agriculture&listingId=${listing.id}`)}
               >
                 <span className="material-symbols-outlined text-[16px]">chat</span> Chat
               </Button>
@@ -241,7 +241,7 @@ export default function GanadoDetail() {
             <Button
               variant="outline"
               className="justify-center h-12"
-              onClick={() => router.push(`/chat/new?userId=${listing.seller_id}&type=livestock&listingId=${listing.id}`)}
+              onClick={() => router.push(`/chat/new?userId=${listing.seller_id}&type=agriculture&listingId=${listing.id}`)}
             >
               <span className="material-symbols-outlined text-[16px]">handshake</span> Negociar
             </Button>

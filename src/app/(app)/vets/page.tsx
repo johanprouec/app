@@ -125,7 +125,6 @@ export default function Vets() {
                 </div>
                 <div className="pt-4 space-y-1">
                   <p className="text-[10px] text-stone font-mono">Código: <span className="text-error">{error.code || 'N/A'}</span></p>
-                  {error.hint && <p className="text-[10px] text-amber-600 font-medium bg-amber-50 p-2 rounded-lg mt-2 italic">Sugerencia: {error.hint}</p>}
                 </div>
               </div>
             ) : vets.length === 0 ? (
@@ -134,70 +133,76 @@ export default function Vets() {
                 <p className="text-sm text-stone font-medium">No se encontraron profesionales</p>
               </div>
             ) : (
-              vets.map((vet, i) => (
-                <Card 
-                  key={vet.id} 
-                  className={`overflow-hidden animate-up d${(i%3)+1} cursor-pointer active:scale-[0.98] transition-transform`}
-                  onClick={() => router.push(`/vets/${vet.id}`)}
-                >
-                  <div className="h-48 relative overflow-hidden">
-                    <img 
-                      src={vet.profile_image_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80"} 
-                      className="w-full h-full object-cover"
-                      alt={vet.professional_title}
-                    />
-                    <div className="vet-badge uppercase">
-                      {vet.animal_specialization?.[0] || 'VETERINARIO'} · {vet.location_city}
-                    </div>
-                    {vet.is_verified && (
-                      <div className="absolute top-3 right-3 bg-forest text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20 backdrop-blur-md">
-                        <span className="material-symbols-outlined text-[12px]">verified</span> Verificado
+              vets.map((vet, i) => {
+                const fullName = vet.user
+                  ? `${vet.professional_title === 'Veterinaria' ? 'Dra.' : 'Dr.'} ${vet.user.first_name} ${vet.user.last_name}`
+                  : vet.professional_title;
+                
+                return (
+                  <Card 
+                    key={vet.id} 
+                    className={`overflow-hidden animate-up d${(i%3)+1} cursor-pointer active:scale-[0.98] transition-transform`}
+                    onClick={() => router.push(`/vets/${vet.id}`)}
+                  >
+                    <div className="h-48 relative overflow-hidden">
+                      <img 
+                        src={vet.profile_image_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80"} 
+                        className="w-full h-full object-cover"
+                        alt={vet.professional_title}
+                      />
+                      <div className="vet-badge uppercase">
+                        {vet.animal_specialization?.[0] || 'VETERINARIO'} · {vet.location_city}
                       </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-headline font-bold text-lg text-forest">{vet.professional_title}</h3>
-                        <p className="text-xs text-stone flex items-center gap-1 mt-0.5">
-                          <span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>
-                          {vet.location_city}, {vet.location_department}
-                        </p>
-                        <p className="text-xs text-stone mt-1">
-                          ⭐ {vet.rating || '0.0'} · {vet.years_experience} años exp.
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-headline font-bold text-lg text-amber">${(vet.consultation_price || 0) / 1000}K</p>
-                        <p className="text-[10px] text-stone">/consulta</p>
-                      </div>
+                      {vet.is_verified && (
+                        <div className="absolute top-3 right-3 bg-forest text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20 backdrop-blur-md">
+                          <span className="material-symbols-outlined text-[12px]">verified</span> Verificado
+                        </div>
+                      )}
                     </div>
-                    
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {vet.animal_specialization?.map(s => (
-                        <Chip key={s} selected={false} className="!text-[9px] !bg-sage-light !text-forest !px-2 !py-0.5">{s}</Chip>
-                      ))}
-                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-headline font-bold text-lg text-forest">{fullName}</h3>
+                          <p className="text-xs text-stone flex items-center gap-1 mt-0.5">
+                            <span className="material-symbols-outlined fill-icon text-[13px] text-error">location_on</span>
+                            {vet.location_city}, {vet.location_department}
+                          </p>
+                          <p className="text-xs text-stone mt-1">
+                            ⭐ {vet.rating || '0.0'} · {vet.years_experience} años exp.
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-headline font-bold text-lg text-amber">${(vet.consultation_price || 0) / 1000}K</p>
+                          <p className="text-[10px] text-stone">/consulta</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {vet.specialties?.slice(0, 3).map(s => (
+                          <Chip key={s.specialty} selected={false} className="!text-[9px] !bg-sage-light !text-forest !px-2 !py-0.5">{s.specialty}</Chip>
+                        ))}
+                      </div>
 
-                    <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="outline" 
-                        className="flex-1 justify-center !text-sm !py-2" 
-                        onClick={() => router.push(`/chat/vet_${vet.id}`)}
-                      >
-                        <span className="material-symbols-outlined text-[15px]">chat</span> Chat
-                      </Button>
-                      <Button 
-                        variant="amber" 
-                        className="flex-1 justify-center !text-sm !py-2 font-bold" 
-                        onClick={() => setSelectedVet(vet)}
-                      >
-                        Agendar
-                      </Button>
+                      <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 justify-center !text-sm !py-2" 
+                          onClick={() => router.push(`/chat/vet_${vet.id}`)}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">chat</span> Chat
+                        </Button>
+                        <Button 
+                          variant="amber" 
+                          className="flex-1 justify-center !text-sm !py-2 font-bold" 
+                          onClick={() => setSelectedVet(vet)}
+                        >
+                          Agendar
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))
+                  </Card>
+                );
+              })
             )}
           </div>
         </div>

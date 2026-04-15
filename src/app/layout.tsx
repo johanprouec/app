@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "AgroLink · Ecosistema Agropecuario",
@@ -23,8 +24,10 @@ export default function RootLayout({
         "--font-fraunces": "Georgia, serif",
         "--font-be-vietnam-pro": "Arial, sans-serif",
       } as CSSProperties}>
-        <ToastProvider />
-        {children}
+        <AuthProvider>
+          <ToastProvider />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

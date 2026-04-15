@@ -19,42 +19,48 @@ export default function Register() {
 
   const doRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (!firstName || !lastName || !email || !password || !producerType) {
+      showToast('Por favor completa todos los campos', 'error');
+      return;
+    }
+    
     if (!acceptedTerms) {
       showToast('Debes aceptar los términos para continuar', 'error');
       return;
     }
 
     setLoading(true);
+    showToast('Creando cuenta...', 'info');
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          producer_type: producerType,
-        },
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            producer_type: producerType.toLowerCase().replace(/ /g, '_'),
+          }
+        }
+      });
 
-    setLoading(false);
+      if (error) throw error;
 
-    if (error) {
-      showToast(error.message, 'error');
-      return;
+      showToast('¡Cuenta creada! Revisa tu correo', 'success');
+      router.push('/login');
+    } catch (error: any) {
+      showToast(error.message || 'Error al registrarse', 'error');
+    } finally {
+      setLoading(false);
     }
-
-    showToast('Cuenta creada. Revisa tu correo si Supabase pide confirmación.', 'success');
-    router.push('/home');
   };
 
   return (
     <div className="bg-cream h-full flex flex-col">
       <div className="scroll-area">
         <div className="max-w-md mx-auto px-6 pt-16 pb-10">
-          <button onClick={() => router.push('/')} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer border-none bg-transparent">
+          <button onClick={() => router.back()} className="flex items-center gap-1 text-stone mb-8 text-sm font-medium active:opacity-60 cursor-pointer border-none bg-transparent">
             <span className="material-symbols-outlined text-[18px]">arrow_back</span> Volver
           </button>
           <div className="mb-8 animate-up">
@@ -65,30 +71,64 @@ export default function Register() {
             <div className="grid grid-cols-2 gap-3 animate-up d1">
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Nombre</label>
-                <div className="field flex items-center px-4 h-12"><input type="text" placeholder="Carlos" className="flex-1 bg-transparent text-sm text-forest py-3 w-full" value={firstName} onChange={(e) => setFirstName(e.target.value)} required/></div>
+                <div className="field flex items-center px-4 h-12">
+                  <input 
+                    type="text" 
+                    placeholder="Carlos" 
+                    className="flex-1 bg-transparent text-sm text-forest py-3 w-full outline-none"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Apellido</label>
-                <div className="field flex items-center px-4 h-12"><input type="text" placeholder="López" className="flex-1 bg-transparent text-sm text-forest py-3 w-full" value={lastName} onChange={(e) => setLastName(e.target.value)} required/></div>
+                <div className="field flex items-center px-4 h-12">
+                  <input 
+                    type="text" 
+                    placeholder="López" 
+                    className="flex-1 bg-transparent text-sm text-forest py-3 w-full outline-none"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                </div>
               </div>
             </div>
             <div className="animate-up d2">
               <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Correo electrónico</label>
               <div className="field flex items-center gap-3 px-4 h-12">
                 <span className="material-symbols-outlined text-stone text-xl">mail</span>
-                <input type="email" placeholder="tu@correo.com" className="flex-1 bg-transparent text-sm text-forest py-3 w-full" value={email} onChange={(e) => setEmail(e.target.value)} required/>
+                <input 
+                  type="email" 
+                  placeholder="tu@correo.com" 
+                  className="flex-1 bg-transparent text-sm text-forest py-3 w-full outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                />
               </div>
             </div>
             <div className="animate-up d2">
               <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Tipo de productor</label>
               <div className="field flex items-center gap-3 px-4 h-12">
                 <span className="material-symbols-outlined text-stone text-xl">agriculture</span>
-                <select className="flex-1 bg-transparent text-sm text-forest py-3 outline-none appearance-none w-full" value={producerType} onChange={(e) => setProducerType(e.target.value)} required>
+                <select 
+                  className="flex-1 bg-transparent text-sm text-forest py-3 outline-none appearance-none w-full"
+                  value={producerType}
+                  onChange={(e) => setProducerType(e.target.value)}
+                  disabled={loading}
+                  required
+                >
                   <option value="">Selecciona...</option>
-                  <option>Ganadero independiente</option>
-                  <option>Agricultor independiente</option>
-                  <option>Empresa agropecuaria</option>
-                  <option>Cooperativa</option>
+                  <option value="ganadero_independiente">Ganadero independiente</option>
+                  <option value="agricultor_independiente">Agricultor independiente</option>
+                  <option value="empresa_agropecuaria">Empresa agropecuaria</option>
+                  <option value="cooperativa">Cooperativa</option>
                 </select>
               </div>
             </div>
@@ -96,7 +136,16 @@ export default function Register() {
               <label className="text-xs font-bold uppercase tracking-wider text-stone mb-1.5 block">Contraseña</label>
               <div className="field flex items-center gap-3 px-4 h-12">
                 <span className="material-symbols-outlined text-stone text-xl">lock</span>
-                <input type={showPwd ? "text" : "password"} placeholder="Mín. 8 caracteres" className="flex-1 bg-transparent text-sm text-forest py-3 w-full" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required/>
+                <input 
+                  type={showPwd ? "text" : "password"} 
+                  placeholder="Mín. 8 caracteres" 
+                  className="flex-1 bg-transparent text-sm text-forest py-3 w-full outline-none"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                  minLength={8}
+                />
                 <button type="button" onClick={() => setShowPwd(!showPwd)} className="text-stone cursor-pointer border-none bg-transparent">
                   <span className="material-symbols-outlined text-xl">{showPwd ? "visibility_off" : "visibility"}</span>
                 </button>
