@@ -8,6 +8,10 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
 
+function getAppointmentDate(appointment: Appointment) {
+  return appointment.scheduled_at || appointment.appointment_date || appointment.created_at;
+}
+
 export default function Appointments() {
   const { appointments, loading, error, refresh } = useUserAppointments();
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
@@ -94,7 +98,7 @@ export default function Appointments() {
                              {apt.vet?.professional_title || "Especialista"}
                           </h4>
                           <p className="text-[10px] text-stone font-bold uppercase tracking-widest mt-0.5">
-                            {apt.service_id.replace('_', ' ')}
+                            {apt.reason || apt.service_id?.replace('_', ' ') || 'Consulta general'}
                           </p>
                         </div>
                         <div className={`text-[9px] font-bold uppercase tracking-tight py-1 px-2 rounded-lg border ${getStatusColor(apt.status)}`}>
@@ -105,12 +109,12 @@ export default function Appointments() {
                       <div className="mt-3 flex items-center gap-3">
                         <div className="flex items-center gap-1.5 text-xs text-stone">
                           <span className="material-symbols-outlined text-[16px] text-amber">calendar_month</span>
-                          {format(new Date(apt.appointment_date), "d 'de' MMMM", { locale: es })}
+                          {format(new Date(getAppointmentDate(apt)), "d 'de' MMMM", { locale: es })}
                         </div>
                         <div className="w-1 h-1 rounded-full bg-stone/20" />
                         <div className="flex items-center gap-1.5 text-xs text-stone">
                           <span className="material-symbols-outlined text-[16px] text-amber">schedule</span>
-                          {format(new Date(apt.appointment_date), "HH:mm")}
+                          {format(new Date(getAppointmentDate(apt)), "HH:mm")}
                         </div>
                       </div>
                     </div>
@@ -121,7 +125,7 @@ export default function Appointments() {
                       <p className="text-[10px] items-center gap-1 flex text-stone font-bold uppercase tracking-widest mb-1">
                         <span className="material-symbols-outlined text-[12px]">notes</span> Notas
                       </p>
-                      <p className="text-xs text-stone leading-relaxed italic">"{apt.notes}"</p>
+                      <p className="text-xs text-stone leading-relaxed italic">&ldquo;{apt.notes}&rdquo;</p>
                     </div>
                   )}
 

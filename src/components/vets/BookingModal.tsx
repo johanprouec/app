@@ -27,14 +27,16 @@ export function BookingModal({ vet, onClose }: BookingModalProps) {
     try {
       await createAppointment({
         vet_id: vet.id,
-        service_id: selectedService,
-        appointment_date: `${date}T${time}:00Z`,
+        scheduled_at: `${date}T${time}:00Z`,
+        reason: selectedService === 'consulta_general' ? 'Consulta general' : selectedService,
+        price: vet.consultation_price,
         notes
       });
       showToast('¡Cita agendada con éxito!', 'success');
       onClose();
-    } catch (err: any) {
-      showToast(err.message || 'Error al agendar cita', 'error');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al agendar cita';
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }

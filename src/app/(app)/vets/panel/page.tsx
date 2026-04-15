@@ -3,12 +3,14 @@ import React, { useState } from "react";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
 import { useVetAccount, useVetAppointments, updateAppointmentStatus, Appointment } from "@/hooks/useVets";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+
+function getAppointmentDate(appointment: Appointment) {
+  return appointment.scheduled_at || appointment.appointment_date || appointment.created_at;
+}
 
 export default function VetPanel() {
   const { vet, loading: loadingVet } = useVetAccount();
@@ -33,8 +35,9 @@ export default function VetPanel() {
       await updateAppointmentStatus(id, status);
       showToast(`Cita ${status === 'confirmed' ? 'confirmada' : status === 'completed' ? 'completada' : 'cancelada'}`, 'success');
       refresh();
-    } catch (err: any) {
-      showToast(err.message || 'Error al actualizar estado', 'error');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al actualizar estado';
+      showToast(message, 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -150,11 +153,11 @@ export default function VetPanel() {
                        <div className="flex items-center gap-3 mt-3">
                          <div className="flex items-center gap-1.5 text-xs text-stone font-medium">
                            <span className="material-symbols-outlined text-[16px] text-amber">calendar_today</span>
-                           {format(new Date(apt.appointment_date), "d 'de' MMMM", { locale: es })}
+                           {format(new Date(getAppointmentDate(apt)), "d 'de' MMMM", { locale: es })}
                          </div>
                          <div className="flex items-center gap-1.5 text-xs text-stone font-medium">
                            <span className="material-symbols-outlined text-[16px] text-amber">schedule</span>
-                           {format(new Date(apt.appointment_date), "HH:mm")}
+                           {format(new Date(getAppointmentDate(apt)), "HH:mm")}
                          </div>
                        </div>
                      </div>
@@ -175,7 +178,7 @@ export default function VetPanel() {
                       <p className="text-[10px] text-stone font-bold uppercase tracking-widest mb-1 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">comment</span> Notas del agricultor
                       </p>
-                      <p className="text-xs text-stone leading-relaxed italic">"{apt.notes}"</p>
+                      <p className="text-xs text-stone leading-relaxed italic">&ldquo;{apt.notes}&rdquo;</p>
                     </div>
                   )}
 
@@ -210,7 +213,7 @@ export default function VetPanel() {
                       </Button>
                     ) : (
                       <div className="text-center w-full">
-                        <p className="text-[10px] text-stone font-bold uppercase tracking-widest">Atención finalizada el {format(new Date(apt.appointment_date), "d MMM", { locale: es })}</p>
+                        <p className="text-[10px] text-stone font-bold uppercase tracking-widest">Atención finalizada el {format(new Date(getAppointmentDate(apt)), "d MMM", { locale: es })}</p>
                       </div>
                     )}
                   </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface Notification {
   id: string;
@@ -18,11 +19,14 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    let channel: any;
+    let channel: RealtimeChannel | undefined;
+    let active = true;
 
     async function initNotifications() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
+      if (!active) return;
+
       if (!user) {
         setNotifications([]);
         setLoading(false);
@@ -36,6 +40,8 @@ export function useNotifications() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      if (!active) return;
+
       if (!error && data) {
         setNotifications(data as Notification[]);
         setUnreadCount(data.filter(n => !n.is_read).length);
@@ -43,8 +49,12 @@ export function useNotifications() {
       setLoading(false);
 
       // 2. Suscribirse a cambios en tiempo real
+      const channelId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
+
       channel = supabase
-        .channel(`user-notifications:${user.id}`)
+        .channel(`user-notifications:${user.id}:${channelId}`)
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
@@ -68,6 +78,7 @@ export function useNotifications() {
     initNotifications();
 
     return () => {
+      active = false;
       if (channel) supabase.removeChannel(channel);
     };
   }, []);

@@ -1,6 +1,25 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
+type HookError = { message: string; code?: string; hint?: string };
+
+function toHookError(err: unknown): HookError {
+  if (err instanceof Error) {
+    return { message: err.message };
+  }
+
+  if (err && typeof err === 'object') {
+    const source = err as { message?: unknown; code?: unknown; hint?: unknown };
+    return {
+      message: typeof source.message === 'string' ? source.message : 'Error inesperado',
+      code: typeof source.code === 'string' ? source.code : undefined,
+      hint: typeof source.hint === 'string' ? source.hint : undefined,
+    };
+  }
+
+  return { message: 'Error inesperado' };
+}
+
 export interface Vet {
   id: string;
   user_id: string;
@@ -36,7 +55,7 @@ export function useVets(filters: {
 } = {}) {
   const [vets, setVets] = useState<Vet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+  const [error, setError] = useState<HookError | null>(null);
 
   useEffect(() => {
     async function fetchVets() {
@@ -87,12 +106,8 @@ export function useVets(filters: {
         }
 
         setVets(filteredData);
-      } catch (err: any) {
-        setError({
-          message: err.message,
-          code: err.code,
-          hint: err.hint
-        });
+      } catch (err) {
+        setError(toHookError(err));
       } finally {
         setLoading(false);
       }
@@ -153,7 +168,7 @@ export function useAllCities() {
 export function useVet(id: string) {
   const [vet, setVet] = useState<Vet | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+  const [error, setError] = useState<HookError | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -170,12 +185,8 @@ export function useVet(id: string) {
 
         if (err) throw err;
         setVet(data as Vet);
-      } catch (err: any) {
-        setError({
-          message: err.message,
-          code: err.code,
-          hint: err.hint
-        });
+      } catch (err) {
+        setError(toHookError(err));
       } finally {
         setLoading(false);
       }
@@ -206,7 +217,7 @@ export interface VetSpecialty {
 export function useVetReviews(vetId: string) {
   const [reviews, setReviews] = useState<VetReview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+  const [error, setError] = useState<HookError | null>(null);
 
   useEffect(() => {
     if (!vetId) return;
@@ -223,12 +234,8 @@ export function useVetReviews(vetId: string) {
 
         if (err) throw err;
         setReviews(data as VetReview[]);
-      } catch (err: any) {
-        setError({
-          message: err.message,
-          code: err.code,
-          hint: err.hint
-        });
+      } catch (err) {
+        setError(toHookError(err));
       } finally {
         setLoading(false);
       }
@@ -243,7 +250,7 @@ export function useVetReviews(vetId: string) {
 export function useVetSpecialties(vetId: string) {
   const [specialties, setSpecialties] = useState<VetSpecialty[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+  const [error, setError] = useState<HookError | null>(null);
 
   useEffect(() => {
     if (!vetId) return;
@@ -259,12 +266,8 @@ export function useVetSpecialties(vetId: string) {
 
         if (err) throw err;
         setSpecialties(data as VetSpecialty[]);
-      } catch (err: any) {
-        setError({
-          message: err.message,
-          code: err.code,
-          hint: err.hint
-        });
+      } catch (err) {
+        setError(toHookError(err));
       } finally {
         setLoading(false);
       }
@@ -303,19 +306,15 @@ export function useSimilarVets(currentVet: Vet | null) {
 
         if (err) throw err;
         setVets(data as Vet[]);
-      } catch (err: any) {
-        setError({
-          message: err.message,
-          code: err.code,
-          hint: err.hint
-        });
+      } catch (err) {
+        setError(toHookError(err));
       } finally {
         setLoading(false);
       }
     }
 
     fetchSimilar();
-  }, [currentVet?.id]);
+  }, [currentVet]);
 
   return { vets, loading, error };
 }
@@ -323,10 +322,13 @@ export function useSimilarVets(currentVet: Vet | null) {
 // Still available for later use once appointments table is confirmed/available
 export interface Appointment {
   id: string;
-  user_id: string;
+  patient_id: string;
   vet_id: string;
-  service_id: string;
-  appointment_date: string;
+  service_id?: string;
+  reason?: string;
+  appointment_date?: string;
+  scheduled_at: string;
+  price?: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   notes?: string;
   created_at: string;
@@ -336,7 +338,7 @@ export interface Appointment {
 export function useUserAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, code?: string, hint?: string } | null>(null);
+  const [error, setError] = useState<HookError | null>(null);
 
   useEffect(() => {
     async function fetchAppointments() {
@@ -353,17 +355,13 @@ export function useUserAppointments() {
         const { data, error: err } = await supabase
           .from('appointments')
           .select('*, vet:veterinarian_profiles(*)')
-          .eq('user_id', user.id)
-          .order('appointment_date', { ascending: false });
+          .eq('patient_id', user.id)
+          .order('scheduled_at', { ascending: false });
 
         if (err) throw err;
         setAppointments(data as Appointment[]);
-      } catch (err: any) {
-        setError({
-          message: err.message,
-          code: err.code,
-          hint: err.hint
-        });
+      } catch (err) {
+        setError(toHookError(err));
       } finally {
         setLoading(false);
       }
@@ -379,8 +377,8 @@ export function useUserAppointments() {
       const { data } = await supabase
         .from('appointments')
         .select('*, vet:veterinarian_profiles(*)')
-        .eq('user_id', user.id)
-        .order('appointment_date', { ascending: false });
+        .eq('patient_id', user.id)
+        .order('scheduled_at', { ascending: false });
       if (data) setAppointments(data as Appointment[]);
     } catch (err) {
       console.error('Error refreshing appointments:', err);
@@ -392,39 +390,39 @@ export function useUserAppointments() {
 
 export async function createAppointment(appointment: {
   vet_id: string;
-  service_id?: string;
-  appointment_date: string;
+  scheduled_at: string;
+  reason?: string;
+  price?: number;
   notes?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Debes iniciar sesión para agendar');
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
 
-  const { data, error } = await supabase
-    .from('appointments')
-    .insert([
-      {
-        user_id: user.id,
-        vet_id: appointment.vet_id,
-        service_id: appointment.service_id || 'consulta_general',
-        appointment_date: appointment.appointment_date,
-        notes: appointment.notes,
-        status: 'pending'
-      }
-    ])
-    .select();
-
-  if (error) {
-    console.error('Error creating appointment:', error);
-    throw error;
+  if (!token) {
+    throw new Error('Debes iniciar sesión para agendar');
   }
 
-  return data?.[0] || null;
+  const response = await fetch('/api/appointments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(appointment),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Error al agendar cita');
+  }
+
+  return result.appointment;
 }
 
 export function useVetAccount() {
   const [vet, setVet] = useState<Vet | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     async function fetchVet() {
@@ -460,7 +458,7 @@ export function useVetAccount() {
 export function useVetAppointments(vetId: string | undefined) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     if (!vetId) return;
@@ -472,7 +470,7 @@ export function useVetAppointments(vetId: string | undefined) {
           .from('appointments')
           .select('*')
           .eq('vet_id', vetId)
-          .order('appointment_date', { ascending: false });
+          .order('scheduled_at', { ascending: false });
 
         if (err) throw err;
         setAppointments(data as Appointment[]);
@@ -491,7 +489,7 @@ export function useVetAppointments(vetId: string | undefined) {
       .from('appointments')
       .select('*')
       .eq('vet_id', vetId)
-      .order('appointment_date', { ascending: false });
+      .order('scheduled_at', { ascending: false });
     if (data) setAppointments(data as Appointment[]);
   };
 

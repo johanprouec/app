@@ -8,10 +8,29 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import './Terrain3D.css';
 
+type LeafletWithDraw = typeof L & {
+  Control: typeof L.Control & {
+    Draw: new (options: unknown) => L.Control;
+  };
+  Draw: {
+    Event: {
+      CREATED: string;
+      DELETED: string;
+    };
+  };
+};
+
+interface DrawCreatedEvent extends L.LeafletEvent {
+  layer: L.Polygon;
+}
+
+interface ElevationLookupResponse {
+  results: Array<{ elevation: number }>;
+}
+
 // Fix Leaflet marker icons only on client side
 if (typeof window !== 'undefined') {
-  //@ts-ignore
-  delete L.Icon.Default.prototype._getIconUrl;
+  delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: unknown })._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -41,6 +60,7 @@ const MOCK_POLYGONS: Record<string, [number, number][]> = {
 };
 
 const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
+  const leafletDraw = L as LeafletWithDraw;
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -89,7 +109,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     map.addLayer(drawnItems);
 
     // Initialize Leaflet Draw
-    const drawControl = new (L as any).Control.Draw({
+    const drawControl = new leafletDraw.Control.Draw({
       edit: { featureGroup: drawnItems, remove: true },
       draw: {
         polygon: {
@@ -110,10 +130,12 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     });
     map.addControl(drawControl);
 
-    map.on((L as any).Draw.Event.CREATED, (e: any) => {
+    map.on(leafletDraw.Draw.Event.CREATED, (e: L.LeafletEvent) => {
+      const event = e as DrawCreatedEvent;
       drawnItems.clearLayers();
-      drawnItems.addLayer(e.layer);
-      const latlngs = e.layer.getLatLngs()[0].map((ll: any) => [ll.lng, ll.lat]);
+      drawnItems.addLayer(event.layer);
+      const rings = event.layer.getLatLngs() as L.LatLng[][];
+      const latlngs: [number, number][] = rings[0].map((ll) => [ll.lng, ll.lat]);
       // Ensure closed polygon
       if (latlngs[0][0] !== latlngs[latlngs.length - 1][0]) {
         latlngs.push(latlngs[0]);
@@ -122,7 +144,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       setStatus('LISTO');
     });
 
-    map.on((L as any).Draw.Event.DELETED, () => {
+    map.on(leafletDraw.Draw.Event.DELETED, () => {
       setCurrentPolygon(null);
       setStatus('ESPERANDO');
     });
@@ -133,26 +155,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
-
-  // Handle propertyId
-  useEffect(() => {
-    if (propertyId && MOCK_POLYGONS[propertyId] && mapRef.current) {
-      const polygon = MOCK_POLYGONS[propertyId];
-      setCurrentPolygon(polygon);
-      
-      // Update map view
-      const latlngs = polygon.map(p => [p[1], p[0]] as [number, number]);
-      const poly = L.polygon(latlngs, { color: '#00e5a0', fillOpacity: 0.15 });
-      poly.addTo(mapRef.current);
-      mapRef.current.fitBounds(poly.getBounds());
-      
-      // Small delay to ensure everything is ready before triggering generate
-      setTimeout(() => {
-        generate3DFromPolygon(polygon);
-      }, 500);
-    }
-  }, [propertyId, mapRef.current]);
+  }, [leafletDraw.Control, leafletDraw.Draw.Event.CREATED, leafletDraw.Draw.Event.DELETED]);
 
   // Initialize Three.js
   useEffect(() => {
@@ -419,8 +422,8 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ locations }),
         });
-        const data = await res.json();
-        elevations.push(...data.results.map((r: any) => r.elevation));
+        const data = (await res.json()) as ElevationLookupResponse;
+        elevations.push(...data.results.map((r) => r.elevation));
       }
 
       rawDataRef.current = { elevations, gridPoints: points, cols: GRID, rows: GRID, mask };
@@ -439,11 +442,30 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       setLoading(false);
       setStatus('ERROR');
     }
-  };
+	  };
+
+  // Handle propertyId
+  useEffect(() => {
+    if (propertyId && MOCK_POLYGONS[propertyId] && mapRef.current) {
+      const polygon = MOCK_POLYGONS[propertyId];
+      
+      // Update map view
+      const latlngs = polygon.map(p => [p[1], p[0]] as [number, number]);
+      const poly = L.polygon(latlngs, { color: '#00e5a0', fillOpacity: 0.15 });
+      poly.addTo(mapRef.current);
+      mapRef.current.fitBounds(poly.getBounds());
+      
+      // Small delay to ensure everything is ready before triggering generate
+      setTimeout(() => {
+        setCurrentPolygon(polygon);
+        generate3DFromPolygon(polygon);
+      }, 500);
+    }
+  }, [propertyId]);
 
   const handleClear = () => {
     if (mapRef.current) {
-        mapRef.current.eachLayer((l: any) => {
+        mapRef.current.eachLayer((l: L.Layer) => {
             if (l instanceof L.Polygon && !(l instanceof L.Rectangle)) {
                 l.remove();
             }
@@ -461,7 +483,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     <div className="terrain-engine-container">
       {/* 2D MAP */}
       <div className="map-panel">
-        <div className="panel-header">TerrainForge - Mapa 2D</div>
+        <div className="panel-header">TerrainForge - Mapa 2D · {status}</div>
         <div id="map-container" ref={mapContainerRef}></div>
         <div className="map-controls">
           <button 

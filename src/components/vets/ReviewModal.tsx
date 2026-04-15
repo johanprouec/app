@@ -32,8 +32,9 @@ export function ReviewModal({ appointment, onClose }: ReviewModalProps) {
       });
       showToast('¡Reseña enviada con éxito!', 'success');
       onClose(true);
-    } catch (err: any) {
-      showToast(err.message || 'Error al enviar reseña', 'error');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al enviar reseña';
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }

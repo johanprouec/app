@@ -1,5 +1,6 @@
 import { useRouter } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 
 interface TopNavProps {
   title?: React.ReactNode;
@@ -14,6 +15,7 @@ interface TopNavProps {
 export function TopNav({ title, subtitle, showBack, backTo, rightAction, isHome, centered }: TopNavProps) {
   const router = useRouter();
   const { unreadCount } = useNotifications();
+  const { profile } = useCurrentUserProfile();
 
   const handleBack = () => {
     if (backTo) router.push(backTo);
@@ -40,7 +42,7 @@ export function TopNav({ title, subtitle, showBack, backTo, rightAction, isHome,
             <span className="material-symbols-outlined text-forest text-[20px]">notifications</span>
             {unreadCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error rounded-full border-2 border-cream animate-pulse"></span>}
           </button>
-          <button onClick={() => router.push('/profile')} className="w-9 h-9 rounded-full bg-forest flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:bg-forest-mid transition-colors">CL</button>
+          <button onClick={() => router.push('/profile')} className="w-9 h-9 rounded-full bg-forest flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:bg-forest-mid transition-colors">{profile.initials}</button>
         </div>
       </div>
     );

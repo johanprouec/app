@@ -3,19 +3,29 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 
 export default function Profile() {
   const router = useRouter();
   const [notif, setNotif] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const { profile, loading } = useCurrentUserProfile();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <div className="bg-cream h-full flex flex-col pt-0">
       <div className="flex-shrink-0 relative overflow-hidden" style={{background: 'linear-gradient(180deg,#002d1c 0%,#1a4a32 100%)'}}>
         <div className="pt-14 pb-6 px-5 text-center relative z-10 animate-fade">
-          <div className="w-20 h-20 rounded-full bg-amber-light flex items-center justify-center mx-auto font-headline font-bold text-2xl text-forest shadow-editorial">CL</div>
-          <h2 className="font-headline font-bold text-xl text-white mt-3">Carlos López</h2>
-          <p className="text-green-300/60 text-xs mt-0.5">Ganadero independiente · Bogotá, CO</p>
+          <div className="w-20 h-20 rounded-full bg-amber-light flex items-center justify-center mx-auto font-headline font-bold text-2xl text-forest shadow-editorial">
+            {loading ? "..." : profile.initials}
+          </div>
+          <h2 className="font-headline font-bold text-xl text-white mt-3">{loading ? "Cargando..." : profile.fullName}</h2>
+          <p className="text-green-300/60 text-xs mt-0.5">{profile.producerType} · {profile.email}</p>
           <div className="flex justify-center gap-6 mt-4">
             <div className="text-center"><p className="font-headline font-bold text-lg text-white">105</p><p className="text-[9px] text-green-300/50 uppercase tracking-wider">Cabezas</p></div>
             <div className="w-px bg-white/10"></div>
@@ -91,7 +101,7 @@ export default function Profile() {
             </div>
           </Card>
 
-          <button onClick={() => router.push('/')} className="w-full bg-[#fff9f9] border border-[#ffdad6] rounded-[16px] p-4 flex items-center justify-center gap-2 text-sm font-semibold text-error animate-up d5 cursor-pointer transition-colors hover:bg-[#ffebee]">
+          <button onClick={handleLogout} className="w-full bg-[#fff9f9] border border-[#ffdad6] rounded-[16px] p-4 flex items-center justify-center gap-2 text-sm font-semibold text-error animate-up d5 cursor-pointer transition-colors hover:bg-[#ffebee]">
             <span className="material-symbols-outlined text-[18px]">logout</span> Cerrar sesión
           </button>
         </div>

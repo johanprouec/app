@@ -2,9 +2,11 @@
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 
 export default function Home() {
   const router = useRouter();
+  const { profile, loading } = useCurrentUserProfile();
 
   return (
     <>
@@ -14,7 +16,9 @@ export default function Home() {
           {/* Greeting */}
           <div className="animate-up">
             <p className="text-stone text-sm">Buenos días,</p>
-            <h2 className="font-headline text-2xl font-bold text-forest">Carlos López 👋</h2>
+            <h2 className="font-headline text-2xl font-bold text-forest">
+              {loading ? "Cargando..." : profile.fullName} 👋
+            </h2>
           </div>
 
           {/* Weather hero */}

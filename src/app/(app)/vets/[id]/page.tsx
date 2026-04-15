@@ -27,7 +27,7 @@ function ReviewCard({ review }: { review: VetReview }) {
           <span className="text-xs font-bold text-amber">{review.rating}.0</span>
         </div>
       </div>
-      <p className="text-xs text-stone leading-relaxed italic">"{review.comment}"</p>
+      <p className="text-xs text-stone leading-relaxed italic">&ldquo;{review.comment}&rdquo;</p>
     </div>
   );
 }
@@ -60,8 +60,8 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
   const router = useRouter();
   const { id } = use(params);
   const { vet, loading: loadingVet, error: errorVet } = useVet(id);
-  const { reviews, loading: loadingReviews, error: errorReviews } = useVetReviews(id);
-  const { specialties, loading: loadingSpecs } = useVetSpecialties(id);
+  const { reviews, loading: loadingReviews } = useVetReviews(id);
+  const { specialties } = useVetSpecialties(id);
   const { vets: similarVets, loading: loadingSimilar } = useSimilarVets(vet);
   const [showBooking, setShowBooking] = useState(false);
 
@@ -190,7 +190,7 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
               Acerca de mí
             </h2>
             <div className="p-6 bg-white rounded-[28px] shadow-sm border border-sage-light/20 leading-relaxed text-sm text-stone italic">
-              "{vet.bio || "Este profesional aún no ha completado su biografía detallada, pero cuenta con toda la certificación AgroLink para atender a tus animales con la mayor dedicación."}"
+              &ldquo;{vet.bio || "Este profesional aún no ha completado su biografía detallada, pero cuenta con toda la certificación AgroLink para atender a tus animales con la mayor dedicación."}&rdquo;
             </div>
           </div>
 
@@ -270,8 +270,9 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
                 try {
                   const roomId = await getOrCreateChatRoom(vet.id);
                   router.push(`/chat/${roomId}`);
-                } catch (err: any) {
-                  showToast(err.message || 'Error al iniciar chat', 'error');
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'Error al iniciar chat';
+                  showToast(message, 'error');
                 }
               }}
             >
