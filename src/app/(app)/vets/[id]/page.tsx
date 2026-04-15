@@ -33,20 +33,21 @@ function ReviewCard({ review }: { review: VetReview }) {
 }
 
 function SimilarVetCard({ vet, onClick }: { vet: Vet, onClick: () => void }) {
+  const fullName = vet.user ? `${vet.user.first_name} ${vet.user.last_name}` : vet.professional_title;
   return (
     <div 
       className="flex-shrink-0 w-64 bg-white rounded-[28px] border border-sage-light/20 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer shadow-editorial"
       onClick={onClick}
     >
       <div className="h-36 relative">
-        <img src={vet.profile_image_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80"} className="w-full h-full object-cover" alt={vet.professional_title} />
+        <img src={vet.profile_image_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80"} className="w-full h-full object-cover" alt={fullName} />
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-xl flex items-center gap-1 shadow-sm">
           <span className="material-symbols-outlined text-amber fill-icon text-[14px]">star</span>
           <span className="text-xs font-bold text-forest">{vet.rating || '0.0'}</span>
         </div>
       </div>
       <div className="p-4 bg-gradient-to-b from-white to-cream/30">
-        <p className="text-sm font-bold text-forest truncate">{vet.professional_title}</p>
+        <p className="text-sm font-bold text-forest truncate">{fullName}</p>
         <p className="text-[11px] text-stone flex items-center gap-1 mt-1 font-medium">
           <span className="material-symbols-outlined text-[14px]">location_on</span>
           {vet.location_city}
@@ -101,6 +102,8 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
     );
   }
 
+  const fullName = vet.user ? `${vet.user.first_name} ${vet.user.last_name}` : vet.professional_title;
+
   return (
     <div className="bg-cream min-h-screen relative overflow-x-hidden">
       {/* Immersive Header */}
@@ -136,7 +139,7 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
                 <img 
                   src={vet.profile_image_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80"} 
                   className="w-full h-full object-cover"
-                  alt={vet.professional_title}
+                  alt={fullName}
                 />
               </div>
               {vet.available_for_emergency && (
@@ -146,7 +149,7 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
               )}
            </div>
            <h1 className="font-headline font-bold text-3xl text-white mt-4 text-center drop-shadow-editorial">
-             {vet.professional_title}
+             {fullName}
            </h1>
            <p className="text-white/80 font-medium text-xs mt-1 flex items-center gap-1.5 uppercase tracking-widest bg-white/10 backdrop-blur-md px-3 py-1 rounded-lg">
               <span className="material-symbols-outlined text-[14px]">location_on</span>
