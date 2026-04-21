@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { getSupabase } from "@/lib/supabase/client";
 
 export default function Login() {
   const router = useRouter();
@@ -30,10 +29,6 @@ export default function Login() {
       if (error) {
         showToast(error.message, "error");
       } else {
-        // Asegurar que la sesión se sincronice antes de redirigir
-        const supabase = getSupabase();
-        await supabase.auth.getSession();
-        
         showToast("¡Bienvenido!", "success");
         
         const params = new URLSearchParams(window.location.search);

@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
+function describeError(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object') return JSON.stringify(error);
+  return String(error);
+}
+
 export interface ProductiveLand {
   id: string;
   name: string;
@@ -42,6 +48,7 @@ export function useTierras(filters: {
     async function fetchTierras() {
       setLoading(true);
       try {
+        setError(null);
         let query = supabase
           .from('productive_lands')
           .select('*');
@@ -63,7 +70,8 @@ export function useTierras(filters: {
         if (err) throw err;
         setTierras(data as ProductiveLand[]);
       } catch (err) {
-        console.error('Error fetching productive lands:', err);
+        console.warn('Error fetching productive lands:', describeError(err));
+        setTierras([]);
         setError(err);
       } finally {
         setLoading(false);
@@ -83,6 +91,7 @@ export function useMyAssets() {
   const fetchAssets = async () => {
     setLoading(true);
     try {
+      setAssets([]);
       // In a real app we'd filter by owner_id = auth.user.id
       // but for this demo/MVP we show all where is_listed = false
       // or simply a dedicated set of items.
@@ -94,7 +103,7 @@ export function useMyAssets() {
       if (error) throw error;
       setAssets(data as ProductiveLand[]);
     } catch (err) {
-      console.error('Error fetching assets:', err);
+      console.warn('Error fetching assets:', describeError(err));
     } finally {
       setLoading(false);
     }
@@ -142,6 +151,7 @@ export function useTierra(id: string | null) {
     async function fetchTierra() {
       setLoading(true);
       try {
+        setError(null);
         const { data, error: err } = await supabase
           .from('productive_lands')
           .select(`
@@ -154,7 +164,8 @@ export function useTierra(id: string | null) {
         if (err) throw err;
         setTierra(data as ProductiveLand);
       } catch (err) {
-        console.error('Error fetching productive land:', err);
+        console.warn('Error fetching productive land:', describeError(err));
+        setTierra(null);
         setError(err);
       } finally {
         setLoading(false);
@@ -175,7 +186,7 @@ export async function createProductiveLand(data: Partial<ProductiveLand>) {
     .single();
 
   if (error) {
-    console.error('Error creating productive land:', error);
+    console.warn('Error creating productive land:', describeError(error));
     throw error;
   }
 

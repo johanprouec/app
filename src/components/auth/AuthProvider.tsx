@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastProfileSyncRef = useRef<string | null>(null);
 
   const supabase = getSupabase();
   const allowedProducerTypes = new Set([
@@ -129,7 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setProfile(data as Profile);
+      return;
     }
+
+    setProfile(null);
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
@@ -147,34 +151,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      try {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await syncProfile(session.user);
-          await fetchProfile(session.user.id);
-        }
-      } catch (error) {
-        console.error("Error initializing auth session:", describeError(error));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (!session?.user) {
+        setProfile(null);
       }
       setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        try {
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            await syncProfile(session.user);
-            await fetchProfile(session.user.id);
-          } else {
-            setProfile(null);
-          }
-        } catch (error) {
-          console.error("Error processing auth state change:", describeError(error));
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (!session?.user) {
+          lastProfileSyncRef.current = null;
+          setProfile(null);
         }
         setLoading(false);
       }
@@ -182,6 +175,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [supabase, fetchProfile, syncProfile]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfileState() {
+      if (!user) {
+        lastProfileSyncRef.current = null;
+        setProfile(null);
+        return;
+      }
+
+      try {
+        if (lastProfileSyncRef.current !== user.id) {
+          await syncProfile(user);
+          if (cancelled) return;
+          lastProfileSyncRef.current = user.id;
+        }
+
+        await fetchProfile(user.id);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Auth profile sync warning:", describeError(error));
+        }
+      }
+    }
+
+    void loadProfileState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, fetchProfile, syncProfile]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
