@@ -16,11 +16,11 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
   const handleCheckout = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      router.push("/login?next=checkout");
+      router.push("/login?next=/checkout");
       onClose();
     } else {
-      // Proceed to real payment/checkout flow
-      alert("Procediendo al pago...");
+      router.push("/checkout");
+      onClose();
     }
   };
 
