@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/ToastProvider";
 import { useVetAccount, useVetAppointments, updateAppointmentStatus, Appointment } from "@/hooks/useVets";
+import { useCreateTask } from "@/hooks/useDashboard";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -15,6 +16,7 @@ function getAppointmentDate(appointment: Appointment) {
 export default function VetPanel() {
   const { vet, loading: loadingVet } = useVetAccount();
   const { appointments, loading: loadingAppointments, refresh } = useVetAppointments(vet?.id);
+  const { createTask } = useCreateTask();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const stats = {
@@ -43,6 +45,22 @@ export default function VetPanel() {
     }
   };
 
+  const handleSpecialistApplication = async () => {
+    const { error } = await createTask({
+      title: "Solicitud para unirme como especialista",
+      description: "Quiero postularme como médico veterinario dentro de AgroLink.",
+      priority: "high",
+    });
+
+    if (error) {
+      const message = error instanceof Error ? error.message : "No pudimos registrar la solicitud";
+      showToast(message, "error");
+      return;
+    }
+
+    showToast("Registramos tu solicitud para revisión", "success");
+  };
+
   if (loadingVet) {
     return (
       <div className="bg-cream h-full flex flex-col items-center justify-center animate-pulse">
@@ -64,7 +82,7 @@ export default function VetPanel() {
           <p className="text-sm text-stone mt-3 mb-8 px-4">
             Únete a la red AgroLink para conectar con miles de ganaderos y gestionar tus consultas de forma profesional.
           </p>
-          <Button variant="amber" className="px-8 !py-4 font-bold" onClick={() => showToast('Solicitud enviada a revisión', 'success')}>
+          <Button variant="amber" className="px-8 !py-4 font-bold" onClick={handleSpecialistApplication}>
              Postularme como Especialista
           </Button>
         </div>

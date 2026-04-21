@@ -56,12 +56,16 @@ export default function Profile() {
       .eq("id", profile.id);
     if (!error) {
       await refreshProfile();
+      showToast(profile.dark_mode ? "Modo noche desactivado" : "Modo noche activado", "info");
+    } else {
+      showToast(error.message, "error");
     }
   };
 
   const handleSignOut = async () => {
     await signOut();
-    router.push("/");
+    router.replace("/login");
+    router.refresh();
   };
 
   const yearsSinceJoined = profile 

@@ -2,7 +2,6 @@
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
-import { showToast } from "@/components/ui/ToastProvider";
 import { useConversations } from "@/hooks/useChat";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -26,7 +25,7 @@ export default function ChatList() {
         backTo="/home"
         title="Mensajes" 
         rightAction={
-          <button className="w-10 h-10 rounded-2xl bg-forest flex items-center justify-center cursor-pointer border-none shadow-md active:scale-95 transition-all" onClick={() => showToast('Nueva conversación','info')}>
+          <button className="w-10 h-10 rounded-2xl bg-forest flex items-center justify-center cursor-pointer border-none shadow-md active:scale-95 transition-all" onClick={() => router.push("/vets")}>
             <span className="material-symbols-outlined text-white text-[20px]">edit_square</span>
           </button>
         } 
@@ -45,6 +44,12 @@ export default function ChatList() {
               <span className="material-symbols-outlined text-[60px] mb-4">forum_off</span>
               <p className="text-sm font-medium">Aún no tienes conversaciones activas.</p>
               <p className="text-xs mt-2 leading-relaxed">Contacta a un vendedor o veterinario para iniciar un chat privado.</p>
+              <button
+                onClick={() => router.push("/vets")}
+                className="mt-4 px-4 py-2 rounded-2xl bg-forest text-white text-xs font-bold border-none cursor-pointer"
+              >
+                Buscar contactos
+              </button>
             </div>
           ) : (
             conversations.map((conv, i) => {

@@ -1,14 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
-import { Button } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/ToastProvider";
-import { useUserAppointments, Appointment, createAppointment, toHookError } from "@/hooks/useVets";
+import { useUserAppointments, Appointment, updateAppointmentStatus } from "@/hooks/useVets";
 import { ReviewModal } from "@/components/vets/ReviewModal";
-import { format, isToday, isYesterday } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 function getAppointmentDate(appointment: Appointment) {
@@ -20,6 +18,7 @@ export default function Appointments() {
   const { appointments, loading, error, refresh } = useUserAppointments();
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
   const [filter, setFilter] = useState<'active' | 'past'>('active');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const getStatusColor = (status: Appointment['status']) => {
     switch (status) {
@@ -45,6 +44,20 @@ export default function Appointments() {
     if (filter === 'active') return ['pending', 'confirmed'].includes(apt.status);
     return ['completed', 'cancelled'].includes(apt.status);
   });
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+    setCancellingId(appointmentId);
+    try {
+      await updateAppointmentStatus(appointmentId, "cancelled");
+      showToast("Cita cancelada correctamente", "success");
+      refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No pudimos cancelar la cita";
+      showToast(message, "error");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   return (
     <div className="bg-cream h-full flex flex-col pt-0">
@@ -172,9 +185,10 @@ export default function Appointments() {
                       {apt.status === 'pending' && (
                         <button 
                           className="flex-1 py-2 text-xs font-bold text-error bg-error-light/10 rounded-xl hover:bg-error-light/20 transition-colors"
-                          onClick={() => showToast('Cancelación no implementada en API por ahora', 'info')}
+                          onClick={() => handleCancelAppointment(apt.id)}
+                          disabled={cancellingId === apt.id}
                         >
-                          Cancelar
+                          {cancellingId === apt.id ? 'Cancelando...' : 'Cancelar'}
                         </button>
                       )}
                       {apt.status === 'completed' && (

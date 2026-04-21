@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { showToast } from "@/components/ui/ToastProvider";
 import { useTierra } from "@/hooks/useTierras";
+import { useCreateConversation } from "@/hooks/useChat";
 import 'leaflet/dist/leaflet.css';
 
 // Dynamic import for Leaflet to avoid SSR issues
@@ -28,6 +29,7 @@ export default function TierrasDetail() {
   const params = useParams();
   const id = params.id as string;
   const { tierra, loading } = useTierra(id);
+  const { createConversation } = useCreateConversation();
   const [activeImage, setActiveImage] = useState<string>("");
 
   useEffect(() => {
@@ -80,6 +82,25 @@ export default function TierrasDetail() {
   const mapCenter = (leafletPolygon && leafletPolygon.length > 0) 
     ? [leafletPolygon[0][0], leafletPolygon[0][1]] as [number, number]
     : [4.5709, -74.2973] as [number, number]; // Default to Colombia center
+
+  const handleContactOwner = async () => {
+    if (!tierra.owner_id) {
+      showToast("No pudimos identificar al vendedor", "error");
+      return;
+    }
+
+    try {
+      const conversationId = await createConversation(tierra.owner_id, "land", tierra.id);
+      if (!conversationId) {
+        showToast("No pudimos iniciar la conversación", "error");
+        return;
+      }
+      router.push(`/chat/${conversationId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No pudimos abrir el chat";
+      showToast(message, "error");
+    }
+  };
 
   return (
     <div className="bg-[#07090c] min-h-screen text-white flex flex-col">
@@ -216,10 +237,10 @@ export default function TierrasDetail() {
                 </div>
 
                 <div className="flex flex-col gap-3 pt-4">
-                  <Button variant="amber" className="w-full py-5 rounded-2xl justify-center font-bold text-lg shadow-[0_10px_30px_rgba(245,158,11,0.2)] hover:scale-[1.02] transition-all" onClick={() => showToast('Iniciando negociación...','info')}>
+                  <Button variant="amber" className="w-full py-5 rounded-2xl justify-center font-bold text-lg shadow-[0_10px_30px_rgba(245,158,11,0.2)] hover:scale-[1.02] transition-all" onClick={handleContactOwner}>
                     Iniciar Negociación
                   </Button>
-                  <Button variant="outline" className="w-full py-4 rounded-2xl justify-center font-bold border-white/20 text-white/80 hover:bg-white/5" onClick={() => router.push(`/chat/${tierra.id}`)}>
+                  <Button variant="outline" className="w-full py-4 rounded-2xl justify-center font-bold border-white/20 text-white/80 hover:bg-white/5" onClick={handleContactOwner}>
                     Contactar Vendedor
                   </Button>
                 </div>

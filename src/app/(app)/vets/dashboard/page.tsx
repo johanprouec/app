@@ -11,7 +11,8 @@ export default function VetDashboard() {
   const handleStatusUpdate = async (id: string, status: string) => {
     const { error } = await updateStatus(id, status);
     if (error) {
-      showToast(error.message, "error");
+      const message = error instanceof Error ? error.message : "No pudimos actualizar la cita";
+      showToast(message, "error");
     } else {
       showToast(`Cita ${status === 'confirmed' ? 'confirmada' : 'actualizada'}`, "success");
     }

@@ -7,6 +7,7 @@ import { showToast } from "@/components/ui/ToastProvider";
 import { CartDrawer } from "@/components/ui/CartDrawer";
 import { useAgricultureDetail } from "@/hooks/useListings";
 import { useCart } from "@/hooks/useCart";
+import { useCreateConversation } from "@/hooks/useChat";
 import { useState } from "react";
 
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -35,6 +36,7 @@ export default function AgriculturaDetail() {
   const id = params.id as string;
   const { listing, loading } = useAgricultureDetail(id);
   const { addToCart, count: cartCount } = useCart();
+  const { createConversation } = useCreateConversation();
   const [cartAdded, setCartAdded] = useState(false);
   const [showCart, setShowCart] = useState(false);
 
@@ -50,6 +52,25 @@ export default function AgriculturaDetail() {
     setCartAdded(true);
     showToast("Añadido al carrito 🛒", "success");
     setTimeout(() => setCartAdded(false), 2000);
+  };
+
+  const handleOpenConversation = async () => {
+    if (!listing?.seller_id) {
+      showToast("No pudimos identificar al vendedor", "error");
+      return;
+    }
+
+    try {
+      const conversationId = await createConversation(listing.seller_id, "agriculture", listing.id);
+      if (!conversationId) {
+        showToast("No pudimos iniciar la conversación", "error");
+        return;
+      }
+      router.push(`/chat/${conversationId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No pudimos abrir el chat";
+      showToast(message, "error");
+    }
   };
 
   if (loading) {
@@ -229,7 +250,7 @@ export default function AgriculturaDetail() {
               <Button
                 variant="outline"
                 className="!py-2 !px-3 !text-sm flex-shrink-0"
-                onClick={() => router.push(`/chat/new?userId=${listing.seller_id}&type=agriculture&listingId=${listing.id}`)}
+                onClick={handleOpenConversation}
               >
                 <span className="material-symbols-outlined text-[16px]">chat</span> Chat
               </Button>
@@ -241,7 +262,7 @@ export default function AgriculturaDetail() {
             <Button
               variant="outline"
               className="justify-center h-12"
-              onClick={() => router.push(`/chat/new?userId=${listing.seller_id}&type=agriculture&listingId=${listing.id}`)}
+              onClick={handleOpenConversation}
             >
               <span className="material-symbols-outlined text-[16px]">handshake</span> Negociar
             </Button>

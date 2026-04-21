@@ -5,13 +5,14 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { showToast } from "@/components/ui/ToastProvider";
-import { useDashboardMetrics } from "@/hooks/useDashboard";
+import { useCreateTask, useDashboardMetrics } from "@/hooks/useDashboard";
 import { useNotifications } from "@/hooks/useNotifications";
 
 export default function Panel() {
   const router = useRouter();
   const { metrics, loading: metricsLoading } = useDashboardMetrics();
   const { notifications, loading: notifLoading } = useNotifications();
+  const { createTask } = useCreateTask();
 
   const livestockCount = metrics.livestock_count?.value ?? 0;
   const livestockTrend = metrics.livestock_count?.trend_pct ?? 0;
@@ -28,6 +29,41 @@ export default function Panel() {
     return `$${val}`;
   };
 
+  const handleExport = () => {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      metrics,
+      critical_alerts: criticalAlerts,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `panel-agrolink-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast("Reporte exportado", "success");
+  };
+
+  const handleCreateTask = async () => {
+    const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await createTask({
+      title: "Revisar alertas críticas del panel",
+      description: "Haz seguimiento a las alertas activas y toma acción sobre las más urgentes.",
+      priority: "high",
+      due_date: dueDate,
+    });
+
+    if (error) {
+      const message = error instanceof Error ? error.message : "No pudimos crear la tarea";
+      showToast(message, "error");
+      return;
+    }
+
+    showToast("Tarea creada en tu panel", "success");
+  };
+
   return (
     <>
       <TopNav 
@@ -37,7 +73,7 @@ export default function Panel() {
         title="Panel de Control" 
         subtitle="Datos en tiempo real · Proyecciones"
         rightAction={
-          <Button variant="outline" className="!py-1.5 !px-3 !text-xs" onClick={() => showToast('Exportando...','info')}>
+          <Button variant="outline" className="!py-1.5 !px-3 !text-xs" onClick={handleExport}>
             <span className="material-symbols-outlined text-[14px]">download</span> Exportar
           </Button>
         } 
@@ -132,7 +168,12 @@ export default function Panel() {
                       <p className="text-sm font-semibold text-forest">{alert.title}</p>
                       <p className="text-xs text-stone">{alert.body}</p>
                     </div>
-                    <button className="text-amber text-xs font-bold border-none bg-transparent cursor-pointer">Ver</button>
+                    <button
+                      className="text-amber text-xs font-bold border-none bg-transparent cursor-pointer"
+                      onClick={() => router.push(alert.link || "/notif")}
+                    >
+                      Ver
+                    </button>
                   </div>
                 ))
               )}
@@ -140,7 +181,7 @@ export default function Panel() {
             <Button variant="outline" className="w-full justify-center mt-3 !text-sm !py-2" onClick={() => router.push('/notif')}>Ver historial completo</Button>
           </Card>
 
-          <Button variant="amber" className="w-full justify-center animate-up d4" onClick={() => showToast('Creando tarea...','info')}>
+          <Button variant="amber" className="w-full justify-center animate-up d4" onClick={handleCreateTask}>
             <span className="material-symbols-outlined text-[16px]">add_task</span> Nueva Tarea
           </Button>
         </div>

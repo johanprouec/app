@@ -56,6 +56,8 @@ export interface Vet {
   }[];
 }
 
+export type VetProfile = Vet;
+
 export function useVets(filters: { 
   search?: string, 
   animalSpecialty?: string, 
@@ -469,27 +471,89 @@ export function useCreateAppointment() {
   return { createAppointment, cancelAppointment, loading };
 }
 
-export function useVetAppointments() {
+export async function updateAppointmentStatus(id: string, status: Appointment['status']) {
+  const { data: apt } = await supabase.from("appointments").select("patient_id, scheduled_at").eq("id", id).single();
+  const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+
+  if (apt) {
+    await supabase.from("notifications").insert({
+      user_id: apt.patient_id,
+      title: status === 'confirmed' ? "Cita Confirmada" : "Actualización de Cita",
+      body: `Tu cita para el ${new Date(apt.scheduled_at).toLocaleDateString()} ha sido ${status}.`,
+      notification_type: "appointment",
+      severity: "info",
+    });
+  }
+}
+
+export async function createVetReview(review: {
+  vet_id: string;
+  appointment_id: string;
+  rating: number;
+  comment: string;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("Debes iniciar sesión para calificar");
+  }
+
+  const { data, error } = await supabase
+    .from("vet_reviews")
+    .insert({
+      reviewer_id: user.id,
+      vet_id: review.vet_id,
+      appointment_id: review.appointment_id,
+      rating: review.rating,
+      comment: review.comment,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Ya calificaste esta cita");
+    }
+
+    throw error;
+  }
+
+  return data;
+}
+
+export function useVetAppointments(vetId?: string) {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
+      let resolvedVetId = vetId;
+
+      if (!resolvedVetId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setAppointments([]);
+          setLoading(false);
+          return;
+        }
+
+        const { data: vet } = await supabase
+          .from("veterinarian_profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        resolvedVetId = vet?.id;
       }
 
-      const { data: vet } = await supabase
-        .from("veterinarian_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!vet) {
+      if (!resolvedVetId) {
+        setAppointments([]);
         setLoading(false);
         return;
       }
@@ -501,7 +565,7 @@ export function useVetAppointments() {
           patient:profiles!patient_id (first_name, last_name, phone),
           service:veterinary_services (name)
         `)
-        .eq("vet_id", vet.id)
+        .eq("vet_id", resolvedVetId)
         .order("scheduled_at", { ascending: false });
 
       if (err) {
@@ -514,23 +578,13 @@ export function useVetAppointments() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [vetId]);
 
   const updateStatus = async (id: string, status: string) => {
     try {
-      const { data: apt } = await supabase.from("appointments").select("patient_id, scheduled_at").eq("id", id).single();
-      const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
-      if (!error && apt) {
-        await supabase.from("notifications").insert({
-          user_id: apt.patient_id,
-          title: status === 'confirmed' ? "Cita Confirmada" : "Actualización de Cita",
-          body: `Tu cita para el ${new Date(apt.scheduled_at).toLocaleDateString()} ha sido ${status}.`,
-          notification_type: "appointment",
-          severity: "info",
-        });
-        fetchAppointments();
-      }
-      return { error };
+      await updateAppointmentStatus(id, status as Appointment['status']);
+      await fetchAppointments();
+      return { error: null };
     } catch (err: any) {
       return { error: err };
     }
@@ -540,7 +594,7 @@ export function useVetAppointments() {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  return { appointments, loading, error, refetch: fetchAppointments, updateStatus };
+  return { appointments, loading, error, refetch: fetchAppointments, refresh: fetchAppointments, updateStatus };
 }
 
 export function useVetAccount() {

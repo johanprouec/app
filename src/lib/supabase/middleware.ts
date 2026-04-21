@@ -27,8 +27,7 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Descomentar si se quiere forzar el refresh de la sesión en cada request
-  // await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  return supabaseResponse
+  return { response: supabaseResponse, user }
 }

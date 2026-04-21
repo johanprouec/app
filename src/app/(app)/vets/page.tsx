@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { useVets, useAllTechnicalSpecialties, useAllCities, Vet } from "@/hooks/useVets";
+import { getOrCreateChatRoom } from "@/hooks/useChat";
 import { BookingModal } from "@/components/vets/BookingModal";
 import { showToast } from "@/components/ui/ToastProvider";
 
@@ -32,6 +33,17 @@ export default function VetsPage() {
 
   const handleBook = (vet: Vet) => {
     setSelectedVet(vet);
+  };
+
+  const handleOpenChat = async (vet: Vet) => {
+    try {
+      showToast("Abriendo chat...", "info");
+      const roomId = await getOrCreateChatRoom(vet.id);
+      router.push(`/chat/${roomId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No pudimos abrir el chat";
+      showToast(message, "error");
+    }
   };
 
   return (
@@ -187,10 +199,7 @@ export default function VetsPage() {
                         <Button 
                           variant="outline" 
                           className="flex-1 justify-center !text-sm !py-2" 
-                          onClick={() => {
-                            showToast("Abriendo chat...", "info");
-                            router.push(`/chat/vet_${vet.id}`);
-                          }}
+                          onClick={() => handleOpenChat(vet)}
                         >
                           <span className="material-symbols-outlined text-[15px]">chat</span> Chat
                         </Button>

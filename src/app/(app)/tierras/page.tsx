@@ -47,7 +47,7 @@ function TierrasContent() {
           </span>
         }
         rightAction={
-          <Button variant="amber" className="!py-2 !px-4 !text-sm" onClick={() => showToast('Publicar propiedad','info')}>
+          <Button variant="amber" className="!py-2 !px-4 !text-sm" onClick={() => setTab('3d')}>
             <span className="material-symbols-outlined text-[16px]">add</span> Publicar
           </Button>
         } 
@@ -186,16 +186,21 @@ function TierrasContent() {
                         </button>
                         <button 
                           onClick={async () => {
-                            if (viewMode === 'market') {
-                              showToast('Procesando compra...', 'info');
-                              await purchaseProperty(tierra.id);
-                              showToast('¡Finca adquirida!', 'success');
-                              router.refresh();
-                            } else {
-                              showToast(tierra.is_listed ? 'Retirando del mercado...' : 'Publicando en mercado...', 'info');
-                              await toggleListingStatus(tierra.id, tierra.is_listed);
-                              refreshAssets();
-                              showToast('Estado actualizado', 'success');
+                            try {
+                              if (viewMode === 'market') {
+                                showToast('Procesando compra...', 'info');
+                                await purchaseProperty(tierra.id);
+                                showToast('¡Finca adquirida!', 'success');
+                                router.refresh();
+                              } else {
+                                showToast(tierra.is_listed ? 'Retirando del mercado...' : 'Publicando en mercado...', 'info');
+                                await toggleListingStatus(tierra.id, tierra.is_listed);
+                                refreshAssets();
+                                showToast('Estado actualizado', 'success');
+                              }
+                            } catch (error) {
+                              const message = error instanceof Error ? error.message : 'No pudimos completar la acción';
+                              showToast(message, 'error');
                             }
                           }}
                           className={`flex-[1.2] ${viewMode === 'market' ? 'bg-[#00e5a0]' : (tierra.is_listed ? 'bg-amber' : 'bg-white/10 text-white')} text-[#07090c] font-bold py-4 rounded-2xl hover:brightness-110 active:scale-95 transition-all text-sm border-none cursor-pointer shadow-lg`}
@@ -255,7 +260,7 @@ function TierrasContent() {
                   </div>
                 </div>
                 <p className="text-green-300/70 text-sm leading-relaxed mb-4">Carga imágenes satelitales o datos de suelo para obtener predicciones de rendimiento y recomendaciones personalizadas.</p>
-                <Button variant="amber" className="w-full justify-center" onClick={() => showToast('Analizando muestra...','info')}>
+                <Button variant="amber" className="w-full justify-center" onClick={() => setTab('3d')}>
                   <span className="material-symbols-outlined text-[16px]">upload</span> Cargar muestra de suelo
                 </Button>
               </div>

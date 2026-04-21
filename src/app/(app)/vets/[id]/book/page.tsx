@@ -41,10 +41,11 @@ export default function BookAppointment() {
     });
 
     if (error) {
-      showToast(error.message, "error");
+      const message = error instanceof Error ? error.message : "No pudimos agendar la cita";
+      showToast(message, "error");
     } else {
       showToast("Cita agendada con éxito", "success");
-      router.push("/dashboard"); // Or to appointments page
+      router.push("/appointments");
     }
   };
 
