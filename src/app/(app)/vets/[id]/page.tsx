@@ -2,7 +2,7 @@
 import { useEffect, use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVet, useVetReviews, useVetSpecialties, useSimilarVets, VetReview, Vet } from '@/hooks/useVets';
-import { getOrCreateChatRoom } from '@/hooks/useChat';
+import { useCreateConversation } from '@/hooks/useChat';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -65,6 +65,7 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
   const { reviews, loading: loadingReviews } = useVetReviews(id);
   const { specialties } = useVetSpecialties(id);
   const { vets: similarVets, loading: loadingSimilar } = useSimilarVets(vet);
+  const { createConversation } = useCreateConversation();
   const [showBooking, setShowBooking] = useState(false);
 
   useEffect(() => {
@@ -279,8 +280,18 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
                     return;
                   }
 
-                  const roomId = await getOrCreateChatRoom(vet.id);
-                  router.push(`/chat/${roomId}`);
+                  if (!vet.user_id) {
+                    showToast('No pudimos identificar la cuenta del veterinario', 'error');
+                    return;
+                  }
+
+                  const conversationId = await createConversation(vet.user_id, 'vet', vet.id);
+                  if (!conversationId) {
+                    showToast('No pudimos iniciar la conversación', 'error');
+                    return;
+                  }
+
+                  router.push(`/chat/${conversationId}`);
                 } catch (err) {
                   const message = err instanceof Error ? err.message : 'Error al iniciar chat';
                   showToast(message, 'error');

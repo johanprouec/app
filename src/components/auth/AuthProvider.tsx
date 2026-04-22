@@ -130,10 +130,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setProfile(data as Profile);
-      return;
+      return data as Profile;
     }
 
     setProfile(null);
+    return null;
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
@@ -188,9 +189,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         if (lastProfileSyncRef.current !== user.id) {
-          await syncProfile(user);
+          const existingProfile = await fetchProfile(user.id);
           if (cancelled) return;
+
+          if (!existingProfile) {
+            await syncProfile(user);
+            if (cancelled) return;
+            await fetchProfile(user.id);
+            if (cancelled) return;
+          }
+
           lastProfileSyncRef.current = user.id;
+          return;
         }
 
         await fetchProfile(user.id);

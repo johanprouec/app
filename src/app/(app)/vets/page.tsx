@@ -7,7 +7,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { useVets, useAllTechnicalSpecialties, useAllCities, Vet } from "@/hooks/useVets";
-import { getOrCreateChatRoom } from "@/hooks/useChat";
+import { useCreateConversation } from "@/hooks/useChat";
 import { BookingModal } from "@/components/vets/BookingModal";
 import { showToast } from "@/components/ui/ToastProvider";
 
@@ -31,6 +31,7 @@ export default function VetsPage() {
 
   const { specs: techSpecs } = useAllTechnicalSpecialties();
   const { cities } = useAllCities();
+  const { createConversation } = useCreateConversation();
 
   const handleBook = (vet: Vet) => {
     setSelectedVet(vet);
@@ -45,9 +46,19 @@ export default function VetsPage() {
         return;
       }
 
+      if (!vet.user_id) {
+        showToast("No pudimos identificar la cuenta del veterinario", "error");
+        return;
+      }
+
       showToast("Abriendo chat...", "info");
-      const roomId = await getOrCreateChatRoom(vet.id);
-      router.push(`/chat/${roomId}`);
+      const conversationId = await createConversation(vet.user_id, "vet", vet.id);
+      if (!conversationId) {
+        showToast("No pudimos iniciar la conversación", "error");
+        return;
+      }
+
+      router.push(`/chat/${conversationId}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No pudimos abrir el chat";
       showToast(message, "error");
