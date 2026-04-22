@@ -199,5 +199,41 @@
 .elev-val span {
     font-size: 10px;
     color: var(--accent);
-    margin-left:2px;
+    margin-left: 2px;
+}
+
+/* Responsividad para móviles */
+@media (max-width: 768px) {
+  .terrain-engine-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 800px;
+  }
+
+  .map-panel {
+    width: 100%;
+    height: 450px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex: none;
+  }
+
+  .view3d-panel {
+    width: 100%;
+    height: 450px;
+    flex: none;
+  }
+
+  .map-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .exag-control {
+    top: 10px;
+  }
+
+  .elev-info {
+    top: 10px;
+  }
 }
