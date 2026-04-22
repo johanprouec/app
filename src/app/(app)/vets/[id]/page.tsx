@@ -3,6 +3,7 @@ import { useEffect, use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVet, useVetReviews, useVetSpecialties, useSimilarVets, VetReview, Vet } from '@/hooks/useVets';
 import { getOrCreateChatRoom } from '@/hooks/useChat';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
@@ -271,6 +272,13 @@ export default function VetDetail({ params }: { params: Promise<{ id: string }> 
               className="w-14 h-14 rounded-2xl bg-forest text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform"
               onClick={async () => {
                 try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) {
+                    showToast('Inicia sesión para chatear con el veterinario', 'info');
+                    router.push(`/login?next=${encodeURIComponent(`/vets/${vet.id}`)}`);
+                    return;
+                  }
+
                   const roomId = await getOrCreateChatRoom(vet.id);
                   router.push(`/chat/${roomId}`);
                 } catch (err) {

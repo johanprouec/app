@@ -2,6 +2,17 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
+  const hasOAuthCode = request.nextUrl.searchParams.has('code');
+  const isAuthCallback = request.nextUrl.pathname === '/auth/callback';
+
+  // Some OAuth providers or Supabase configs can bounce back to "/" with ?code=...
+  // Normalize those requests through the dedicated callback handler.
+  if (hasOAuthCode && !isAuthCallback) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = '/auth/callback';
+    return NextResponse.redirect(callbackUrl);
+  }
+
   const { response, user } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
 

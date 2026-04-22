@@ -36,9 +36,6 @@ export default function Onboarding() {
           <Button variant="glass" onClick={() => router.push('/login')} className="w-full">
             Iniciar sesión
           </Button>
-          <Button variant="ghost" onClick={() => router.push('/home')} className="w-full">
-            <span className="material-symbols-outlined text-base">explore</span> Explorar sin cuenta
-          </Button>
         </div>
         <div className="mt-10 flex items-center justify-between animate-up d3">
           <div className="flex gap-2">

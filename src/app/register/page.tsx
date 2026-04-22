@@ -19,6 +19,16 @@ export default function Register() {
 
   const { signUp, signInWithOAuth } = useAuth();
 
+  const getRegisterErrorMessage = (message?: string) => {
+    if (!message) return "Error al registrarse";
+
+    if (message.toLowerCase().includes("email rate limit exceeded")) {
+      return "Ya enviamos demasiados correos de verificacion en poco tiempo. Espera unos minutos, revisa tu bandeja o intenta entrar con Google.";
+    }
+
+    return message;
+  };
+
   const doRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !lastName || !email || !password || !producerType) {
@@ -46,7 +56,7 @@ export default function Register() {
       showToast('¡Cuenta creada! Revisa tu correo o inicia sesión', 'success');
       router.push('/login');
     } catch (error: any) {
-      showToast(error.message || 'Error al registrarse', 'error');
+      showToast(getRegisterErrorMessage(error?.message), 'error');
     } finally {
       setLoading(false);
     }

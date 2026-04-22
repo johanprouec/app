@@ -5,6 +5,7 @@ import { TopNav } from "@/components/navigation/TopNav";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import { supabase } from "@/lib/supabase";
 import { useVets, useAllTechnicalSpecialties, useAllCities, Vet } from "@/hooks/useVets";
 import { getOrCreateChatRoom } from "@/hooks/useChat";
 import { BookingModal } from "@/components/vets/BookingModal";
@@ -37,6 +38,13 @@ export default function VetsPage() {
 
   const handleOpenChat = async (vet: Vet) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        showToast("Inicia sesión para chatear con el veterinario", "info");
+        router.push(`/login?next=${encodeURIComponent(`/vets/${vet.id}`)}`);
+        return;
+      }
+
       showToast("Abriendo chat...", "info");
       const roomId = await getOrCreateChatRoom(vet.id);
       router.push(`/chat/${roomId}`);
