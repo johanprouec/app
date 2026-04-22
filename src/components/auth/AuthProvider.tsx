@@ -235,8 +235,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    if (!error && data.user) {
-      await syncProfile(data.user);
+    // With email confirmation enabled, Supabase may return a user before the
+    // client actually has an authenticated session. RLS blocks profile writes
+    // in that state, so only sync immediately when a session exists.
+    if (!error && data.session?.user) {
+      await syncProfile(data.session.user);
     }
 
     return { error: error as Error | null };

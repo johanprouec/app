@@ -41,3 +41,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+tmp/
+probe-*.mjs
+inspect-columns.mjs
+debug-raw.mjs
+get-schema.mjs
+get-schema-native.mjs
+test-supabase.mjs
+test-tierras.mjs
