@@ -236,7 +236,13 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
     
     if (controlsRef.current && cameraRef.current) {
         controlsRef.current.target.copy(center);
-        cameraRef.current.position.set(center.x + maxT * 0.8, center.y + maxT * 0.6, center.z + maxT * 0.8);
+        const isMobile = window.innerWidth <= 768;
+        const multiplier = isMobile ? 1.8 : 1.0;
+        cameraRef.current.position.set(
+            center.x + (maxT * 0.8 * multiplier), 
+            center.y + (maxT * 0.6 * multiplier), 
+            center.z + (maxT * 0.8 * multiplier)
+        );
         controlsRef.current.update();
     }
   };
@@ -636,7 +642,7 @@ const Terrain3DEngine: React.FC<Terrain3DEngineProps> = ({ propertyId }) => {
       {/* 3D CANVAS */}
       <div className="view3d-panel" ref={canvasContainerRef}>
         <div className="panel-header">TerrainForge - Visualizador 3D</div>
-        <canvas id="canvas3d" ref={canvasRef}></canvas>
+        <canvas id="canvas3d" ref={canvasRef} style={{ touchAction: 'none' }}></canvas>
 
         {!show3DControls && !loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-30 select-none pointer-events-none">
